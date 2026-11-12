@@ -5,6 +5,7 @@ using System.Collections.Specialized;
 using System.Data;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Numerics;
 using System.Text;
 using System.Threading;
@@ -1385,6 +1386,441 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 1)");
         await server.ExpectExtendedQuery().WaitAsync(TimeSpan.FromSeconds(10));
         await server.WriteScalarResponseAndFlush(1);
         Assert.That(await queryTask, Is.EqualTo(1));
+    }
+
+    public enum BinaryExportMessages { ShortNotice, LongNotice, LongError }
+
+    public enum BinaryExportErrorPosition { BeforeFirstRow, BeforeSecondRow, AfterCopyDone }
+
+    public enum BinaryExporterCall { StartRow, StartRowAsync, Read, ReadWithType, ReadAsync, ReadAsyncWithType, IsNull, Skip, SkipAsync }
+
+    [Test, Description("An ErrorResponse ends a binary export before the first row, with a notice before the COPY response")]
+    public async Task Binary_export_error_before_first_row([Values] bool oversizeNotice)
+    {
+        // With the smallest read buffer, the mock can write a notice that doesn't fit into it. A dispose that waits for data
+        // that never comes (#6703) fails after the command timeout instead of hanging.
+        var csb = new NpgsqlConnectionStringBuilder(ConnectionString) { ReadBufferSize = NpgsqlReadBuffer.MinimumSize, CommandTimeout = 1 };
+        await using var postmasterMock = PgPostmasterMock.Start(csb.ConnectionString);
+        await using var dataSource = CreateLoggingDataSource(out var listLoggerProvider, postmasterMock.ConnectionString);
+        await using var conn = await dataSource.OpenConnectionAsync();
+        var server = await postmasterMock.WaitForServerConnection();
+        using var recording = listLoggerProvider.Record();
+
+        const string command = "COPY SomeTable TO STDOUT (FORMAT BINARY)";
+        var exporterTask = conn.BeginBinaryExportAsync(command);
+        await server.ExpectSimpleQuery(command).WaitAsync(TimeSpan.FromSeconds(10));
+        await server
+            .WriteNoticeResponse(PostgresErrorCodes.Warning, message: new string('x', oversizeNotice ? csb.ReadBufferSize : 10))
+            .WriteCopyOutResponse(isBinary: true)
+            .WriteErrorResponse(PostgresErrorCodes.DivisionByZero)
+            .WriteReadyForQuery()
+            .FlushAsync();
+
+        Assert.That(async () => await exporterTask, Throws.Exception.TypeOf<PostgresException>()
+            .With.Property(nameof(PostgresException.SqlState)).EqualTo(PostgresErrorCodes.DivisionByZero));
+        // The connection is still in sync
+        Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
+        var queryTask = conn.ExecuteScalarAsync("SELECT 1");
+        await server.ExpectExtendedQuery().WaitAsync(TimeSpan.FromSeconds(10));
+        await server.WriteScalarResponseAndFlush(1);
+        Assert.That(await queryTask, Is.EqualTo(1));
+        // BeginBinaryExport's dispose of the exporter swallowed nothing
+        Assert.That(listLoggerProvider.Log.Find(l => l.Id == NpgsqlEventId.ExceptionWhenDisposingCopyOperation).Exception, Is.Null);
+    }
+
+    [Test, Description("An ErrorResponse ends a binary export before the second row or after CopyDone")]
+    public async Task Binary_export_error_after_first_row(
+        [Values] bool afterCopyDone, [Values] BinaryExportMessages messages)
+    {
+        // With the smallest read buffer, the mock can write a notice or an error that doesn't fit into it. A dispose that waits
+        // for data that never comes (#6703) fails after the command timeout instead of hanging.
+        var csb = new NpgsqlConnectionStringBuilder(ConnectionString) { ReadBufferSize = NpgsqlReadBuffer.MinimumSize, CommandTimeout = 1 };
+        await using var postmasterMock = PgPostmasterMock.Start(csb.ConnectionString);
+        await using var dataSource = CreateLoggingDataSource(out var listLoggerProvider, postmasterMock.ConnectionString);
+        await using var conn = await dataSource.OpenConnectionAsync();
+        var server = await postmasterMock.WaitForServerConnection();
+        using var recording = listLoggerProvider.Record();
+
+        const string command = "COPY SomeTable TO STDOUT (FORMAT BINARY)";
+        var exporterTask = conn.BeginBinaryExportAsync(command);
+        await server.ExpectSimpleQuery(command).WaitAsync(TimeSpan.FromSeconds(10));
+        // The header (signature, flags, header extension length) comes with the first row (one column of 3 bytes)
+        server
+            .WriteCopyOutResponse(isBinary: true)
+            .WriteCopyData([.. NpgsqlRawCopyStream.BinarySignature, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 3, .. "abc"u8]);
+        // After CopyDone, an error (e.g. from an AFTER trigger, or a deferred constraint at commit) comes instead of CommandComplete
+        if (afterCopyDone)
+            server.WriteCopyData([0xFF, 0xFF]).WriteCopyDone();
+        if (messages != BinaryExportMessages.LongError)
+        {
+            var noticeLength = messages == BinaryExportMessages.LongNotice ? csb.ReadBufferSize : 10;
+            server.WriteNoticeResponse(PostgresErrorCodes.Warning, message: new string('x', noticeLength));
+        }
+        var errorMessage = messages == BinaryExportMessages.LongError ? new string('x', csb.ReadBufferSize) : "division by zero";
+        await server
+            .WriteErrorResponse(PostgresErrorCodes.DivisionByZero, "ERROR", errorMessage)
+            .WriteReadyForQuery()
+            .FlushAsync();
+
+        var exporter = await exporterTask;
+        Assert.That(await exporter.StartRowAsync(), Is.EqualTo(1));
+        Assert.That(await exporter.ReadAsync<byte[]>(NpgsqlDbType.Bytea), Is.EqualTo("abc"u8.ToArray()));
+        Assert.That(async () => await exporter.StartRowAsync(), Throws.Exception.TypeOf<PostgresException>()
+            .With.Property(nameof(PostgresException.SqlState)).EqualTo(PostgresErrorCodes.DivisionByZero));
+        await exporter.DisposeAsync();
+        // The connection is still in sync
+        Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
+        var queryTask = conn.ExecuteScalarAsync("SELECT 1");
+        await server.ExpectExtendedQuery().WaitAsync(TimeSpan.FromSeconds(10));
+        await server.WriteScalarResponseAndFlush(1);
+        Assert.That(await queryTask, Is.EqualTo(1));
+        // The dispose swallowed nothing
+        Assert.That(listLoggerProvider.Log.Find(l => l.Id == NpgsqlEventId.ExceptionWhenDisposingCopyOperation).Exception, Is.Null);
+    }
+
+    [Test, Description("DisposeAsync skips the rest of an unfinished binary export")]
+    public Task Binary_export_dispose_skips_the_rest()
+        => DisposeBinaryExportAfterFirstRow(
+            server => server.WriteCopyData([0xFF, 0xFF]).WriteCopyDone().WriteCommandComplete("COPY 2").WriteReadyForQuery().FlushAsync(),
+            (conn, listLoggerProvider) =>
+            {
+                Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
+                // The dispose swallowed nothing
+                Assert.That(listLoggerProvider.Log.Find(l => l.Id == NpgsqlEventId.ExceptionWhenDisposingCopyOperation).Exception, Is.Null);
+            });
+
+    [Test, Description("The connection breaks while DisposeAsync skips the rest of an unfinished binary export")]
+    public Task Binary_export_dispose_when_connection_breaks()
+        => DisposeBinaryExportAfterFirstRow(
+            server =>
+            {
+                // Reading beyond the second row fails
+                server.Close();
+                return Task.CompletedTask;
+            },
+            (conn, listLoggerProvider) =>
+            {
+                Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
+                // The dispose swallowed the break's exception
+                Assert.That(listLoggerProvider.Log.Find(l => l.Id == NpgsqlEventId.ExceptionWhenDisposingCopyOperation).Exception,
+                    Is.TypeOf<NpgsqlException>());
+            });
+
+    // Starts a binary export of two rows, lets the given action end the response after the second row, reads the first row and
+    // disposes the exporter, which skips the rest, then runs the given checks
+    async Task DisposeBinaryExportAfterFirstRow(Func<PgServerMock, Task> afterSecondRow, Action<NpgsqlConnection, ListLoggerProvider> check)
+    {
+        await using var postmasterMock = PgPostmasterMock.Start(ConnectionString);
+        await using var dataSource = CreateLoggingDataSource(out var listLoggerProvider, postmasterMock.ConnectionString);
+        await using var conn = await dataSource.OpenConnectionAsync();
+        var server = await postmasterMock.WaitForServerConnection();
+        using var recording = listLoggerProvider.Record();
+
+        const string command = "COPY SomeTable TO STDOUT (FORMAT BINARY)";
+        var exporterTask = conn.BeginBinaryExportAsync(command);
+        await server.ExpectSimpleQuery(command).WaitAsync(TimeSpan.FromSeconds(10));
+        // The header (signature, flags, header extension length) comes with the first row (one column of 3 bytes)
+        await server
+            .WriteCopyOutResponse(isBinary: true)
+            .WriteCopyData([.. NpgsqlRawCopyStream.BinarySignature, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 3, .. "abc"u8])
+            .WriteCopyData([0, 1, 0, 0, 0, 3, .. "def"u8])
+            .FlushAsync();
+        await afterSecondRow(server);
+
+        var exporter = await exporterTask;
+        Assert.That(await exporter.StartRowAsync(), Is.EqualTo(1));
+        // Skips the rest of the export
+        await exporter.DisposeAsync();
+        check(conn, listLoggerProvider);
+    }
+
+    [Test, Description("The connection breaks while StartRow reads the next row of a binary export")]
+    public async Task Binary_export_StartRow_when_connection_breaks([Values] bool async)
+    {
+        await using var postmasterMock = PgPostmasterMock.Start(ConnectionString);
+        await using var dataSource = CreateDataSource(postmasterMock.ConnectionString);
+        await using var conn = await dataSource.OpenConnectionAsync();
+        var server = await postmasterMock.WaitForServerConnection();
+
+        const string command = "COPY SomeTable TO STDOUT (FORMAT BINARY)";
+        var exporterTask = conn.BeginBinaryExportAsync(command);
+        await server.ExpectSimpleQuery(command).WaitAsync(TimeSpan.FromSeconds(10));
+        // The header (signature, flags, header extension length) comes with the first row (one column of 3 bytes).
+        // Then the server ends the connection with a FATAL error, as after pg_terminate_backend.
+        await server
+            .WriteCopyOutResponse(isBinary: true)
+            .WriteCopyData([.. NpgsqlRawCopyStream.BinarySignature, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 3, .. "abc"u8])
+            .WriteErrorResponse(PostgresErrorCodes.AdminShutdown, "FATAL", "terminating connection due to administrator command")
+            .FlushAsync();
+        server.Close();
+
+        var exporter = await exporterTask;
+        Assert.That(await exporter.StartRowAsync(), Is.EqualTo(1));
+        Assert.That(await exporter.ReadAsync<byte[]>(NpgsqlDbType.Bytea), Is.EqualTo("abc"u8.ToArray()));
+        var error = async
+            ? Assert.ThrowsAsync<PostgresException>(async () => await exporter.StartRowAsync())
+            : Assert.Throws<PostgresException>(() => exporter.StartRow());
+        Assert.That(error!.SqlState, Is.EqualTo(PostgresErrorCodes.AdminShutdown));
+        Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
+        // The break disposed the exporter
+        Assert.That(() => exporter.StartRow(), Throws.Exception.TypeOf<ObjectDisposedException>());
+        if (async)
+        {
+            await exporter.DisposeAsync();
+            await exporter.DisposeAsync();
+        }
+        else
+        {
+            exporter.Dispose();
+            exporter.Dispose();
+        }
+    }
+
+    [Test, Description("An ErrorResponse ends a binary export after the client has read everything before it")]
+    public async Task Binary_export_error_after_notice_was_read(
+        [Values] BinaryExportErrorPosition errorAt)
+    {
+        // A real server flushes each notice and error at once, and the ReadyForQuery on its own, so the client often reads
+        // the end of the response into a refilled buffer. Here the error comes after the client has read the notice. A dispose
+        // that waits for data that never comes (#6703) fails after the command timeout instead of hanging.
+        var csb = new NpgsqlConnectionStringBuilder(ConnectionString) { CommandTimeout = 1 };
+        await using var postmasterMock = PgPostmasterMock.Start(csb.ConnectionString);
+        await using var dataSource = CreateLoggingDataSource(out var listLoggerProvider, postmasterMock.ConnectionString);
+        await using var conn = await dataSource.OpenConnectionAsync();
+        var server = await postmasterMock.WaitForServerConnection();
+        using var recording = listLoggerProvider.Record();
+        var noticeRead = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        conn.Notice += (_, _) => noticeRead.TrySetResult();
+
+        const string command = "COPY SomeTable TO STDOUT (FORMAT BINARY)";
+        var exporterTask = conn.BeginBinaryExportAsync(command);
+        await server.ExpectSimpleQuery(command).WaitAsync(TimeSpan.FromSeconds(10));
+        server.WriteCopyOutResponse(isBinary: true);
+        // The header (signature, flags, header extension length) comes with the first row (one column of 3 bytes)
+        if (errorAt != BinaryExportErrorPosition.BeforeFirstRow)
+            server.WriteCopyData([.. NpgsqlRawCopyStream.BinarySignature, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 3, .. "abc"u8]);
+        if (errorAt == BinaryExportErrorPosition.AfterCopyDone)
+            server.WriteCopyData([0xFF, 0xFF]).WriteCopyDone();
+        await server.WriteNoticeResponse(PostgresErrorCodes.Warning).FlushAsync();
+
+        NpgsqlBinaryExporter? exporter = null;
+        Task errorTask = exporterTask;
+        if (errorAt != BinaryExportErrorPosition.BeforeFirstRow)
+        {
+            exporter = await exporterTask;
+            Assert.That(await exporter.StartRowAsync(), Is.EqualTo(1));
+            Assert.That(await exporter.ReadAsync<byte[]>(NpgsqlDbType.Bytea), Is.EqualTo("abc"u8.ToArray()));
+            errorTask = exporter.StartRowAsync().AsTask();
+        }
+        await noticeRead.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        await server
+            .WriteErrorResponse(PostgresErrorCodes.DivisionByZero)
+            .WriteReadyForQuery()
+            .FlushAsync();
+
+        Assert.That(async () => await errorTask, Throws.Exception.TypeOf<PostgresException>()
+            .With.Property(nameof(PostgresException.SqlState)).EqualTo(PostgresErrorCodes.DivisionByZero));
+        if (exporter is not null)
+            await exporter.DisposeAsync();
+        // The connection is still in sync
+        Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
+        var queryTask = conn.ExecuteScalarAsync("SELECT 1");
+        await server.ExpectExtendedQuery().WaitAsync(TimeSpan.FromSeconds(10));
+        await server.WriteScalarResponseAndFlush(1);
+        Assert.That(await queryTask, Is.EqualTo(1));
+        // The dispose swallowed nothing
+        Assert.That(listLoggerProvider.Log.Find(l => l.Id == NpgsqlEventId.ExceptionWhenDisposingCopyOperation).Exception, Is.Null);
+    }
+
+    [Test, Description("An ErrorResponse from a second statement in the command ends a binary export after CommandComplete")]
+    public async Task Binary_export_error_after_CommandComplete()
+    {
+        // A dispose that waits for data that never comes (#6703) fails after the command timeout instead of hanging
+        var csb = new NpgsqlConnectionStringBuilder(ConnectionString) { CommandTimeout = 1 };
+        await using var postmasterMock = PgPostmasterMock.Start(csb.ConnectionString);
+        await using var dataSource = CreateLoggingDataSource(out var listLoggerProvider, postmasterMock.ConnectionString);
+        await using var conn = await dataSource.OpenConnectionAsync();
+        var server = await postmasterMock.WaitForServerConnection();
+        using var recording = listLoggerProvider.Record();
+
+        const string command = "COPY SomeTable TO STDOUT (FORMAT BINARY); SELECT 1 / 0";
+        var exporterTask = conn.BeginBinaryExportAsync(command);
+        await server.ExpectSimpleQuery(command).WaitAsync(TimeSpan.FromSeconds(10));
+        // The header (signature, flags, header extension length) comes with the first row (one column of 3 bytes)
+        await server
+            .WriteCopyOutResponse(isBinary: true)
+            .WriteCopyData([.. NpgsqlRawCopyStream.BinarySignature, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 3, .. "abc"u8])
+            .WriteCopyData([0xFF, 0xFF])
+            .WriteCopyDone()
+            .WriteCommandComplete("COPY 1")
+            .WriteErrorResponse(PostgresErrorCodes.DivisionByZero)
+            .WriteReadyForQuery()
+            .FlushAsync();
+
+        var exporter = await exporterTask;
+        Assert.That(await exporter.StartRowAsync(), Is.EqualTo(1));
+        Assert.That(await exporter.ReadAsync<byte[]>(NpgsqlDbType.Bytea), Is.EqualTo("abc"u8.ToArray()));
+        var error = Assert.ThrowsAsync<PostgresException>(async () => await exporter.StartRowAsync())!;
+        Assert.That(error.SqlState, Is.EqualTo(PostgresErrorCodes.DivisionByZero));
+        Assert.That(async () => await exporter.StartRowAsync(), Throws.InvalidOperationException.With.InnerException.SameAs(error));
+        await exporter.DisposeAsync();
+        // The connection is still in sync
+        Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
+        var queryTask = conn.ExecuteScalarAsync("SELECT 1");
+        await server.ExpectExtendedQuery().WaitAsync(TimeSpan.FromSeconds(10));
+        await server.WriteScalarResponseAndFlush(1);
+        Assert.That(await queryTask, Is.EqualTo(1));
+        // The dispose swallowed nothing
+        Assert.That(listLoggerProvider.Log.Find(l => l.Id == NpgsqlEventId.ExceptionWhenDisposingCopyOperation).Exception, Is.Null);
+    }
+
+    [Test, Description("After an ErrorResponse ended a binary export, a later call throws at once instead of reading from the connection")]
+    public async Task Binary_export_call_after_error(
+        [Values] bool afterCopyDone,
+        [Values] BinaryExporterCall call)
+    {
+        // A later call or a dispose that waits for data that never comes (#6703) fails after the command timeout instead of hanging
+        var csb = new NpgsqlConnectionStringBuilder(ConnectionString) { CommandTimeout = 1 };
+        await using var postmasterMock = PgPostmasterMock.Start(csb.ConnectionString);
+        await using var dataSource = CreateDataSource(postmasterMock.ConnectionString);
+        await using var conn = await dataSource.OpenConnectionAsync();
+        var server = await postmasterMock.WaitForServerConnection();
+
+        const string command = "COPY SomeTable TO STDOUT (FORMAT BINARY)";
+        var exporterTask = conn.BeginBinaryExportAsync(command);
+        await server.ExpectSimpleQuery(command).WaitAsync(TimeSpan.FromSeconds(10));
+        // The header (signature, flags, header extension length) comes with the first row (one column of 3 bytes)
+        server
+            .WriteCopyOutResponse(isBinary: true)
+            .WriteCopyData([.. NpgsqlRawCopyStream.BinarySignature, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 3, .. "abc"u8]);
+        if (afterCopyDone)
+            server.WriteCopyData([0xFF, 0xFF]).WriteCopyDone();
+        await server
+            .WriteErrorResponse(PostgresErrorCodes.DivisionByZero)
+            .WriteReadyForQuery()
+            .FlushAsync();
+
+        var exporter = await exporterTask;
+        Assert.That(await exporter.StartRowAsync(), Is.EqualTo(1));
+        Assert.That(await exporter.ReadAsync<byte[]>(NpgsqlDbType.Bytea), Is.EqualTo("abc"u8.ToArray()));
+        // For a synchronous later call, the failing call and the dispose are synchronous too
+        var async = call is BinaryExporterCall.StartRowAsync or BinaryExporterCall.ReadAsync or BinaryExporterCall.ReadAsyncWithType
+            or BinaryExporterCall.SkipAsync;
+        var error = async
+            ? Assert.ThrowsAsync<PostgresException>(async () => await exporter.StartRowAsync())
+            : Assert.Throws<PostgresException>(() => exporter.StartRow());
+        Assert.That(error!.SqlState, Is.EqualTo(PostgresErrorCodes.DivisionByZero));
+
+        // The later call throws instead of reading, with the error as the inner exception
+        Assert.That(async () =>
+        {
+            switch (call)
+            {
+            case BinaryExporterCall.StartRow:
+                exporter.StartRow();
+                break;
+            case BinaryExporterCall.StartRowAsync:
+                await exporter.StartRowAsync();
+                break;
+            case BinaryExporterCall.Read:
+                exporter.Read<byte[]>();
+                break;
+            case BinaryExporterCall.ReadWithType:
+                exporter.Read<byte[]>(NpgsqlDbType.Bytea);
+                break;
+            case BinaryExporterCall.ReadAsync:
+                await exporter.ReadAsync<byte[]>();
+                break;
+            case BinaryExporterCall.ReadAsyncWithType:
+                await exporter.ReadAsync<byte[]>(NpgsqlDbType.Bytea);
+                break;
+            case BinaryExporterCall.IsNull:
+                _ = exporter.IsNull;
+                break;
+            case BinaryExporterCall.Skip:
+                exporter.Skip();
+                break;
+            default:
+                await exporter.SkipAsync();
+                break;
+            }
+        }, Throws.InvalidOperationException.With.Message.EqualTo("The COPY operation ended with an error.")
+            .And.InnerException.SameAs(error));
+        // Cancel() and a second dispose are harmless
+        exporter.Cancel();
+        if (async)
+        {
+            await exporter.DisposeAsync();
+            await exporter.DisposeAsync();
+        }
+        else
+        {
+            exporter.Dispose();
+            exporter.Dispose();
+        }
+        // The connection is still in sync
+        Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
+        var queryTask = conn.ExecuteScalarAsync("SELECT 1");
+        await server.ExpectExtendedQuery().WaitAsync(TimeSpan.FromSeconds(10));
+        await server.WriteScalarResponseAndFlush(1);
+        Assert.That(await queryTask, Is.EqualTo(1));
+    }
+
+    [Test, Description("The COPY TO activity records the ErrorResponse that ended a binary export")]
+    public async Task Binary_export_error_tracing([Values] bool afterCopyDone)
+    {
+        // The listener sees every Npgsql activity in the process, so the test finds its own by their parent
+        var activities = new List<Activity>();
+        using var listener = new ActivityListener
+        {
+            ShouldListenTo = source => source.Name == "Npgsql",
+            Sample = (ref _) => ActivitySamplingResult.AllDataAndRecorded,
+            ActivityStopped = activity =>
+            {
+                lock (activities)
+                    activities.Add(activity);
+            }
+        };
+        ActivitySource.AddActivityListener(listener);
+        using var parent = new Activity(nameof(Binary_export_error_tracing)).Start();
+
+        await using var postmasterMock = PgPostmasterMock.Start(ConnectionString);
+        await using var dataSource = CreateDataSource(postmasterMock.ConnectionString);
+        await using var conn = await dataSource.OpenConnectionAsync();
+        var server = await postmasterMock.WaitForServerConnection();
+
+        const string command = "COPY SomeTable TO STDOUT (FORMAT BINARY)";
+        var exporterTask = conn.BeginBinaryExportAsync(command);
+        await server.ExpectSimpleQuery(command).WaitAsync(TimeSpan.FromSeconds(10));
+        // The header (signature, flags, header extension length) comes with the first row (one column of 3 bytes)
+        server
+            .WriteCopyOutResponse(isBinary: true)
+            .WriteCopyData([.. NpgsqlRawCopyStream.BinarySignature, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 3, .. "abc"u8]);
+        if (afterCopyDone)
+            server.WriteCopyData([0xFF, 0xFF]).WriteCopyDone();
+        await server
+            .WriteErrorResponse(PostgresErrorCodes.DivisionByZero)
+            .WriteReadyForQuery()
+            .FlushAsync();
+
+        var exporter = await exporterTask;
+        Assert.That(await exporter.StartRowAsync(), Is.EqualTo(1));
+        Assert.That(await exporter.ReadAsync<byte[]>(NpgsqlDbType.Bytea), Is.EqualTo("abc"u8.ToArray()));
+        var error = Assert.ThrowsAsync<PostgresException>(async () => await exporter.StartRowAsync())!;
+        await exporter.DisposeAsync();
+
+        List<Activity> copyActivities;
+        lock (activities)
+            copyActivities = activities.FindAll(a => a.Parent == parent && a.OperationName == "COPY TO");
+        Assert.That(copyActivities, Has.Count.EqualTo(1));
+        var activity = copyActivities[0];
+        Assert.That(activity.Status, Is.EqualTo(ActivityStatusCode.Error));
+        Assert.That(activity.StatusDescription, Is.EqualTo(PostgresErrorCodes.DivisionByZero));
+        var exceptionEvent = activity.Events.Single();
+        Assert.That(exceptionEvent.Name, Is.EqualTo("exception"));
+        var exceptionTags = exceptionEvent.Tags.ToDictionary(t => t.Key, t => t.Value);
+        Assert.That(exceptionTags["exception.type"], Is.EqualTo(typeof(PostgresException).FullName));
+        Assert.That(exceptionTags["exception.message"], Is.EqualTo(error.Message));
     }
 
     #endregion
