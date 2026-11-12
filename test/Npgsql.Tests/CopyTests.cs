@@ -242,6 +242,98 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
         }
     }
 
+    public enum RawExportApi { RawBinaryCopy, TextExport }
+
+    public enum RawExportErrorPosition { BeforeFirstRow, BeforeSecondRow, AfterCopyDone, AfterCommandComplete }
+
+    [Test, Description("An ErrorResponse ends a raw binary or text export, instead of a CopyData message or after CopyDone")]
+    public Task Raw_export_error(
+        [Values] RawExportApi api, [Values] RawExportErrorPosition errorAt, [Values] bool readAgain, [Values] bool async)
+        => RawExport(api, errorAt, async, readToEnd =>
+        {
+            var exception = Assert.ThrowsAsync<PostgresException>(async () => await readToEnd())!;
+            Assert.That(exception.SqlState, Is.EqualTo(PostgresErrorCodes.ForeignKeyViolation));
+            // A later read throws at once
+            if (readAgain)
+                Assert.That(async () => await readToEnd(), Throws.InvalidOperationException
+                    .With.Message.EqualTo("The COPY operation ended with an error.").And.InnerException.SameAs(exception));
+            return Task.CompletedTask;
+        });
+
+    [Test, Description("A raw binary or text export that ends without an error, the control for Raw_export_error")]
+    public Task Raw_export_without_error([Values] RawExportApi api, [Values] bool readAgain, [Values] bool async)
+        => RawExport(api, errorAt: null, async, async readToEnd =>
+        {
+            Assert.That(await readToEnd(), Is.EqualTo("abc\n"));
+            if (readAgain)
+                Assert.That(await readToEnd(), Is.Empty);
+        });
+
+    // Starts a raw binary or text export that the mock ends with an ErrorResponse at the given position (or without one), runs the
+    // given reads on it, disposes it, and checks that the connection is still in sync
+    async Task RawExport(RawExportApi api, RawExportErrorPosition? errorAt, bool async, Func<Func<Task<string>>, Task> reads)
+    {
+        // A dispose that waits for a ReadyForQuery that never comes (#6704) fails after the command timeout instead of hanging
+        var csb = new NpgsqlConnectionStringBuilder(ConnectionString) { CommandTimeout = 1 };
+        await using var postmasterMock = PgPostmasterMock.Start(csb.ConnectionString);
+        await using var dataSource = CreateLoggingDataSource(out var listLoggerProvider, postmasterMock.ConnectionString);
+        await using var conn = await dataSource.OpenConnectionAsync();
+        var server = await postmasterMock.WaitForServerConnection();
+        using var recording = listLoggerProvider.Record();
+
+        // BeginTextExport reads through a raw COPY stream
+        var textExport = api == RawExportApi.TextExport;
+        var command = textExport ? "COPY SomeTable TO STDOUT" : "COPY SomeTable TO STDOUT (FORMAT BINARY)";
+        var readerTask = textExport ? conn.BeginTextExportAsync(command) : null;
+        var streamTask = textExport ? null : conn.BeginRawBinaryCopyAsync(command);
+        await server.ExpectSimpleQuery(command).WaitAsync(TimeSpan.FromSeconds(10));
+        server.WriteCopyOutResponse(isBinary: !textExport);
+        if (errorAt != RawExportErrorPosition.BeforeFirstRow)
+            server.WriteCopyData("abc\n"u8);
+        // After CopyDone, an error (e.g. from an AFTER trigger, or a deferred constraint at commit) comes instead of CommandComplete,
+        // and after CommandComplete one from a second statement in the command
+        if (errorAt is null or RawExportErrorPosition.AfterCopyDone or RawExportErrorPosition.AfterCommandComplete)
+            server.WriteCopyDone();
+        if (errorAt is null or RawExportErrorPosition.AfterCommandComplete)
+            server.WriteCommandComplete("COPY 1");
+        if (errorAt is not null)
+            server.WriteErrorResponse(PostgresErrorCodes.ForeignKeyViolation);
+        await server.WriteReadyForQuery().FlushAsync();
+
+        var reader = readerTask is null ? null : await readerTask;
+        var stream = streamTask is null ? null : await streamTask;
+        await reads(ReadToEnd);
+        if (async)
+            await (reader is not null ? reader.DisposeAsync() : stream!.DisposeAsync());
+        else if (reader is not null)
+            reader.Dispose();
+        else
+            stream!.Dispose();
+        // After the dispose, a later read throws ObjectDisposedException, also when an error ended the export
+        Assert.That(async () => await ReadToEnd(), Throws.TypeOf<ObjectDisposedException>());
+
+        // The connection is still in sync
+        Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
+        var queryTask = conn.ExecuteScalarAsync("SELECT 1");
+        await server.ExpectExtendedQuery().WaitAsync(TimeSpan.FromSeconds(10));
+        await server.WriteScalarResponseAndFlush(1);
+        Assert.That(await queryTask, Is.EqualTo(1));
+        // The dispose swallowed nothing
+        Assert.That(listLoggerProvider.Log.Find(l => l.Id == NpgsqlEventId.ExceptionWhenDisposingCopyOperation).Exception, Is.Null);
+
+        async Task<string> ReadToEnd()
+        {
+            if (reader is not null)
+                return async ? await reader.ReadToEndAsync() : reader.ReadToEnd();
+            var buffer = new byte[100];
+            var data = new MemoryStream();
+            int read;
+            while ((read = async ? await stream!.ReadAsync(buffer, 0, buffer.Length) : stream!.Read(buffer, 0, buffer.Length)) > 0)
+                data.Write(buffer, 0, read);
+            return Encoding.ASCII.GetString(data.ToArray());
+        }
+    }
+
     #endregion
 
     #region Binary
