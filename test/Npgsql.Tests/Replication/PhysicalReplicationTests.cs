@@ -7,7 +7,7 @@ using NpgsqlTypes;
 
 namespace Npgsql.Tests.Replication;
 
-[Explicit("Flakiness")]
+[NonParallelizable]
 public class PhysicalReplicationTests : SafeReplicationTestBase<PhysicalReplicationConnection>
 {
     [Test]
@@ -64,7 +64,7 @@ public class PhysicalReplicationTests : SafeReplicationTestBase<PhysicalReplicat
                 Assert.That(slot?.RestartTimeline, Is.EqualTo(expectedTli));
                 Assert.That(slot?.RestartLsn, Is.EqualTo(expectedRestartLsn));
 
-            }, $"{nameof(ReadReplicationSlot)}_{reserveWal}");
+            }, $"{nameof(ReadReplicationSlot)}_{createSlot}_{reserveWal}");
 
     [Test]
     public Task Replication_with_slot()

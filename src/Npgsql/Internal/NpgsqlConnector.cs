@@ -185,6 +185,8 @@ public sealed partial class NpgsqlConnector
     /// </summary>
     volatile Exception? _breakReason;
 
+    internal Exception? BreakReason => _breakReason;
+
     /// <summary>
     /// A lock that's taken while a cancellation is being delivered; new queries are blocked until the
     /// cancellation is delivered. This reduces the chance that a cancellation meant for a previous
