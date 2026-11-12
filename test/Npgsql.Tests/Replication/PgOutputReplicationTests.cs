@@ -57,8 +57,8 @@ public class PgOutputReplicationTests(
         if (IsBinary || IsStreaming)
             return Task.CompletedTask;
 
-        return SafeReplicationTest(
-            async (slotName, _) =>
+        return SafePgOutputReplicationTest(
+            async (slotName, _, _) =>
             {
 
                 await using var c = await OpenConnectionAsync();
@@ -178,7 +178,7 @@ public class PgOutputReplicationTests(
 
     [Test(Description = "Tests whether UPDATE commands get replicated as Logical Replication Protocol Messages for tables using the default replica identity")]
     public Task Update_for_default_replica_identity()
-        => SafeReplicationTest(
+        => SafePgOutputReplicationTest(
             async (slotName, tableName, publicationName) =>
             {
                 await using var c = await OpenConnectionAsync();
@@ -239,7 +239,7 @@ public class PgOutputReplicationTests(
 
     [Test(Description = "Tests whether UPDATE commands get replicated as Logical Replication Protocol Messages for tables using an index as replica identity")]
     public  Task Update_for_index_replica_identity()
-        => SafeReplicationTest(
+        => SafePgOutputReplicationTest(
             async (slotName, tableName, publicationName) =>
             {
                 await using var c = await OpenConnectionAsync();
@@ -310,7 +310,7 @@ public class PgOutputReplicationTests(
 
     [Test(Description = "Tests whether UPDATE commands get replicated as Logical Replication Protocol Messages for tables using full replica identity")]
     public  Task Update_for_full_replica_identity()
-        => SafeReplicationTest(
+        => SafePgOutputReplicationTest(
             async (slotName, tableName, publicationName) =>
             {
                 await using var c = await OpenConnectionAsync();
@@ -381,7 +381,7 @@ public class PgOutputReplicationTests(
 
     [Test(Description = "Tests whether DELETE commands get replicated as Logical Replication Protocol Messages for tables using the default replica identity")]
     public Task Delete_for_default_replica_identity()
-        => SafeReplicationTest(
+        => SafePgOutputReplicationTest(
             async (slotName, tableName, publicationName) =>
             {
                 await using var c = await OpenConnectionAsync();
@@ -441,7 +441,7 @@ public class PgOutputReplicationTests(
 
     [Test(Description = "Tests whether DELETE commands get replicated as Logical Replication Protocol Messages for tables using an index as replica identity")]
     public Task Delete_for_index_replica_identity()
-        => SafeReplicationTest(
+        => SafePgOutputReplicationTest(
             async (slotName, tableName, publicationName) =>
             {
                 await using var c = await OpenConnectionAsync();
@@ -501,7 +501,7 @@ public class PgOutputReplicationTests(
 
     [Test(Description = "Tests whether DELETE commands get replicated as Logical Replication Protocol Messages for tables using full replica identity")]
     public Task Delete_for_full_replica_identity()
-        => SafeReplicationTest(
+        => SafePgOutputReplicationTest(
             async (slotName, tableName, publicationName) =>
             {
                 await using var c = await OpenConnectionAsync();
@@ -567,7 +567,7 @@ public class PgOutputReplicationTests(
     [TestCase(TruncateOptions.RestartIdentity)]
     [TestCase(TruncateOptions.Cascade | TruncateOptions.RestartIdentity)]
     public Task Truncate(TruncateOptions truncateOptionFlags)
-        => SafeReplicationTest(
+        => SafePgOutputReplicationTest(
             async (slotName, tableName, publicationName) =>
             {
                 await using var c = await OpenConnectionAsync();
@@ -627,7 +627,7 @@ public class PgOutputReplicationTests(
 
     [Test(Description = "Tests whether disposing while replicating will get us stuck forever.")]
     public Task Dispose_while_replicating()
-        => SafeReplicationTest(
+        => SafePgOutputReplicationTest(
             async (slotName, tableName, publicationName) =>
             {
                 await using var c = await OpenConnectionAsync();
@@ -842,7 +842,7 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                 await using var c = await OpenConnectionAsync();
                 await c.ExecuteNonQueryAsync(@$"CREATE TABLE {tableName} (bytes bytea);
                                                     CREATE PUBLICATION {publicationName} FOR TABLE {tableName};");
-                var rc = await OpenReplicationConnectionAsync();
+                await using var rc = await OpenReplicationConnectionAsync();
                 var slot = await rc.CreatePgOutputReplicationSlot(slotName);
 
                 var bytes = new byte[16384];
@@ -907,7 +907,7 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                 await using var c = await OpenConnectionAsync();
                 await c.ExecuteNonQueryAsync(@$"CREATE TABLE {tableName} (id INT PRIMARY KEY, name TEXT NULL);
                                                     CREATE PUBLICATION {publicationName} FOR TABLE {tableName};");
-                var rc = await OpenReplicationConnectionAsync();
+                await using var rc = await OpenReplicationConnectionAsync();
                 var slot = await rc.CreatePgOutputReplicationSlot(slotName);
 
                 var expectedText = "val1";
@@ -947,7 +947,7 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                 await using var c = await OpenConnectionAsync();
                 await c.ExecuteNonQueryAsync(@$"CREATE TABLE {tableName} (id INT PRIMARY KEY, name TEXT NULL);
                                                     CREATE PUBLICATION {publicationName} FOR TABLE {tableName};");
-                var rc = await OpenReplicationConnectionAsync();
+                await using var rc = await OpenReplicationConnectionAsync();
                 var slot = await rc.CreatePgOutputReplicationSlot(slotName);
 
                 await c.ExecuteNonQueryAsync($"INSERT INTO {tableName} VALUES (1, 'val1')");
@@ -988,7 +988,7 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                 await using var c = await OpenConnectionAsync();
                 await c.ExecuteNonQueryAsync(@$"CREATE TABLE {tableName} (int1 INT, int2 INT);
                                                     CREATE PUBLICATION {publicationName} FOR TABLE {tableName};");
-                var rc = await OpenReplicationConnectionAsync();
+                await using var rc = await OpenReplicationConnectionAsync();
                 var slot = await rc.CreatePgOutputReplicationSlot(slotName);
 
                 await c.ExecuteNonQueryAsync($"INSERT INTO {tableName} VALUES (1, 1), (NULL, NULL)");
@@ -1069,7 +1069,7 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};");
                     // In regular tests we'd use a data source, but replication doesn't work with data sources (yet).
                     // In addition, clear the DatabaseInfo cache.
                     using var _ = CreateTempPool(ConnectionString, out var connString);
-                    var rc = await OpenReplicationConnectionAsync(connString);
+                    await using var rc = await OpenReplicationConnectionAsync(connString);
                     var slot = await rc.CreatePgOutputReplicationSlot(slotName);
                     var expected = new Descriptor { Id = 1248, Name = "My Descriptor" };
                     var stringValue = $"({expected.Id},\"{expected.Name}\")";
@@ -1125,9 +1125,10 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};");
         return SafePgOutputReplicationTest(
             async (slotName, tableName, publicationName) =>
             {
-                var gid = Guid.NewGuid().ToString();
+                var gid = slotName; // See SafeReplicationTestBase's cleanup
                 await using var c = await OpenConnectionAsync();
                 TestUtil.MinimumPgVersion(c, "15.0", "Logical decoding of prepared transactions via replication slots was introduced in PostgreSQL 15");
+                await AssertPreparedTransactionsEnabled(c);
                 await c.ExecuteNonQueryAsync(@$"CREATE TABLE {tableName} (a int primary key, b varchar);
                                                 CREATE PUBLICATION {publicationName} FOR TABLE {tableName};");
                 await using var rc = await OpenReplicationConnectionAsync();
@@ -1192,6 +1193,131 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};");
                     }
                 }
             }, $"{GetObjectName(nameof(TwoPhase))}_{(commit ? "commit" : "rollback")}");
+    }
+
+    [Test(Description = "The two_phase option enables the decoding of prepared transactions, and with it the slot's two-phase decoding")]
+    public Task TwoPhase_option()
+    {
+        // The option requires protocol version 3, and streamed prepared transactions are covered by TwoPhase
+        if (protocolVersion < PgOutputProtocolVersion.V3 || IsStreaming)
+            return Task.CompletedTask;
+
+        return SafePgOutputReplicationTest(
+            async (slotName, tableName, publicationName) =>
+            {
+                var gid = slotName; // See SafeReplicationTestBase's cleanup
+                await using var c = await OpenConnectionAsync();
+                TestUtil.MinimumPgVersion(c, "15.0", "The two_phase option of pgoutput was introduced in PostgreSQL 15");
+                await AssertPreparedTransactionsEnabled(c);
+                await c.ExecuteNonQueryAsync(@$"CREATE TABLE {tableName} (a int primary key, b varchar);
+                                                CREATE PUBLICATION {publicationName} FOR TABLE {tableName};");
+                await using var rc = await OpenReplicationConnectionAsync();
+                var slot = await rc.CreatePgOutputReplicationSlot(slotName);
+                Assert.That(await TwoPhaseEnabled(c, slotName), Is.False);
+
+                await using (var tran = await c.BeginTransactionAsync())
+                    await c.ExecuteNonQueryAsync($"INSERT INTO {tableName} VALUES (1, 'val1'); PREPARE TRANSACTION '{gid}';", tran);
+                try
+                {
+                    using var streamingCts = new CancellationTokenSource();
+                    var messages = SkipEmptyTransactions(
+                            rc.StartReplication(slot, GetOptions(publicationName, twoPhase: true), streamingCts.Token))
+                        .GetAsyncEnumerator();
+
+                    var beginPrepare = await NextMessage<BeginPrepareMessage>(messages);
+                    Assert.That(beginPrepare.TransactionGid, Is.EqualTo(gid));
+                    await NextMessage<RelationMessage>(messages);
+                    await NextMessage<InsertMessage>(messages);
+                    var prepare = await NextMessage<PrepareMessage>(messages);
+                    Assert.That(prepare.TransactionXid, Is.EqualTo(beginPrepare.TransactionXid));
+
+                    await c.ExecuteNonQueryAsync($"COMMIT PREPARED '{gid}';");
+                    var commitPrepared = await NextMessage<CommitPreparedMessage>(messages);
+                    Assert.That(commitPrepared.TransactionXid, Is.EqualTo(beginPrepare.TransactionXid));
+                    Assert.That(commitPrepared.TransactionGid, Is.EqualTo(gid));
+
+                    // The server enabled two-phase decoding for the slot itself, not just for this stream
+                    Assert.That(await TwoPhaseEnabled(c, slotName), Is.True);
+
+                    streamingCts.Cancel();
+                    await AssertReplicationCancellation(messages);
+                    await rc.DropReplicationSlot(slotName, cancellationToken: CancellationToken.None);
+                }
+                finally
+                {
+                    try
+                    {
+                        await using var cx = await OpenConnectionAsync();
+                        await cx.ExecuteNonQueryAsync($"ROLLBACK PREPARED '{gid}';");
+                    }
+                    catch
+                    {
+                        // Committed, or give up
+                    }
+                }
+            });
+
+        static async Task<bool> TwoPhaseEnabled(NpgsqlConnection connection, string slotName)
+            => (bool)(await connection.ExecuteScalarAsync($"SELECT two_phase FROM pg_replication_slots WHERE slot_name = '{slotName}'"))!;
+    }
+
+    [Test(Description = "A transaction that rolls back after part of it was streamed ends with a stream abort, also on PostgreSQL 18+")]
+    public Task Stream_abort()
+    {
+        if (!IsStreaming)
+            return Task.CompletedTask;
+
+        return SafePgOutputReplicationTest(
+            async (slotName, tableName, publicationName) =>
+            {
+                await using var c = await OpenConnectionAsync();
+                await c.ExecuteNonQueryAsync(@$"CREATE TABLE {tableName} (id INT PRIMARY KEY, name TEXT NOT NULL);
+                                                CREATE PUBLICATION {publicationName} FOR TABLE {tableName};");
+                await using var rc = await OpenReplicationConnectionAsync();
+                var slot = await rc.CreatePgOutputReplicationSlot(slotName);
+
+                // More changes than fit into logical_decoding_work_mem, so the server streams the transaction while it is in progress
+                await using var tran = await c.BeginTransactionAsync();
+                await c.ExecuteNonQueryAsync($"INSERT INTO {tableName} SELECT i, 'val' || i::text FROM generate_series(1, 15000) s(i)", tran);
+
+                using var streamingCts = new CancellationTokenSource();
+                var messages = SkipEmptyTransactions(rc.StartReplication(slot, GetOptions(publicationName), streamingCts.Token))
+                    .GetAsyncEnumerator();
+
+                // Roll back only once part of the transaction was streamed: PostgreSQL 18 skips transactions that were already
+                // aborted when it would stream them
+                var transactionXid = await AssertTransactionStart(messages);
+                var streamedInserts = 0;
+                do
+                {
+                    Assert.That(await messages.MoveNextAsync());
+                    if (messages.Current is InsertMessage insert)
+                    {
+                        Assert.That(insert.TransactionXid, Is.EqualTo(transactionXid));
+                        streamedInserts++;
+                    }
+                }
+                while (messages.Current is RelationMessage or InsertMessage);
+                Assert.That(messages.Current, Is.TypeOf<StreamStopMessage>());
+                Assert.That(streamedInserts, Is.GreaterThan(0));
+                await tran.RollbackAsync();
+
+                // More of the transaction may have been streamed in the meantime
+                do
+                    Assert.That(await messages.MoveNextAsync());
+                while (messages.Current is StreamStartMessage or RelationMessage or InsertMessage or StreamStopMessage);
+
+                Assert.That(messages.Current, _streamingMode == PgOutputStreamingMode.Parallel
+                    ? Is.TypeOf<ParallelStreamAbortMessage>()
+                    : Is.TypeOf<StreamAbortMessage>());
+                var abort = (StreamAbortMessage)messages.Current;
+                Assert.That(abort.TransactionXid, Is.EqualTo(transactionXid));
+                Assert.That(abort.SubtransactionXid, Is.EqualTo(transactionXid));
+
+                streamingCts.Cancel();
+                await AssertReplicationCancellation(messages);
+                await rc.DropReplicationSlot(slotName, cancellationToken: CancellationToken.None);
+            });
     }
 
 
@@ -1299,7 +1425,7 @@ INSERT INTO {tableNames[0]} VALUES ('5F89F5FE-6F4F-465F-BB87-716B1413F88D', 'ano
 
     [Test(Description = $"Tests whether {nameof(FullUpdateMessage)} instances with unchanged toasted values behave as expected."), Explicit("Massive inserts")]
     public  Task Update_for_full_replica_identity_with_unchanged_toasted_value()
-        => SafeReplicationTest(
+        => SafePgOutputReplicationTest(
             async (slotName, tableName, publicationName) =>
             {
                 await using var c = await OpenConnectionAsync();
@@ -1482,8 +1608,14 @@ INSERT INTO {tableNames[0]} VALUES ('5F89F5FE-6F4F-465F-BB87-716B1413F88D', 'ano
         }
     }
 
-    PgOutputReplicationOptions GetOptions(string publicationName, bool? messages = null)
-        => new(publicationName, protocolVersion, _binary, _streamingMode, messages);
+    PgOutputReplicationOptions GetOptions(string publicationName, bool? messages = null, bool? twoPhase = null)
+        => new(publicationName, protocolVersion, _binary, _streamingMode, messages, twoPhase);
+
+    static async Task AssertPreparedTransactionsEnabled(NpgsqlConnection connection)
+    {
+        if (int.Parse((string)(await connection.ExecuteScalarAsync("SHOW max_prepared_transactions"))!) == 0)
+            TestUtil.IgnoreExceptOnBuildServer("max_prepared_transactions is set to 0 in your postgresql.conf");
+    }
 
     Task SafePgOutputReplicationTest(Func<string, string, string, Task> testAction, [CallerMemberName] string memberName = "")
         => SafeReplicationTest(testAction, GetObjectName(memberName));
