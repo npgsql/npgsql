@@ -44,38 +44,18 @@ public readonly struct Size : IEquatable<Size>
     public static Size Unknown { get; } = new(SizeKind.Unknown, 0);
     public static Size Zero { get; } = new(SizeKind.Exact, 0);
 
-    public bool TryCombine(Size other, out Size result)
-    {
-        if (_kind is SizeKind.Unknown || other._kind is SizeKind.Unknown)
-        {
-            result = Unknown;
-            return true;
-        }
-
-        var sum = unchecked(_value + other._value);
-        if ((_value >= 0 && sum < other._value) || (_value < 0 && sum > other._value))
-        {
-            result = default;
-            return false;
-        }
-
-        if (_kind is SizeKind.UpperBound || other._kind is SizeKind.UpperBound)
-        {
-            result = CreateUpperBound(sum);
-            return true;
-        }
-
-        result = Create(sum);
-        return true;
-    }
-
     public Size Combine(Size other)
     {
         if (_kind is SizeKind.Unknown || other._kind is SizeKind.Unknown)
             return Unknown;
 
         if (_kind is SizeKind.UpperBound || other._kind is SizeKind.UpperBound)
-            return CreateUpperBound(checked(_value + other._value));
+        {
+            // An overflowed UpperBound is a ceiling past the representable max, not an error.
+            // Just a bound no longer possible to track, saturate into Unknown.
+            var sum = (long)_value + other._value;
+            return sum > int.MaxValue ? Unknown : CreateUpperBound((int)sum);
+        }
 
         return Create(checked(_value + other._value));
     }

@@ -7,7 +7,7 @@ using BenchmarkDotNet.Attributes;
 namespace Npgsql.Benchmarks.TypeHandlers;
 
 [Config(typeof(Config))]
-public class Text() : TypeHandlerBenchmarks<string>(TextConverter.CreateStringConverter(PgSerializerOptions.DefaultUtf8Encoding))
+public class Text() : TypeHandlerBenchmarks<string>(TextConverter.CreateStringConverter())
 {
     protected override IEnumerable<string> ValuesOverride()
     {

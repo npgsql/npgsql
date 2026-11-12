@@ -1,4 +1,6 @@
+using System;
 using System.Diagnostics.CodeAnalysis;
+using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.Util;
 
@@ -20,5 +22,17 @@ public interface INpgsqlDatabaseInfoFactory
     /// An object describing the database to which <paramref name="conn"/> is connected, or null if the
     /// database isn't of the correct type and isn't handled by this factory.
     /// </returns>
-    Task<NpgsqlDatabaseInfo?> Load(NpgsqlConnector conn, NpgsqlTimeout timeout, bool async);
+    Task<NpgsqlDatabaseInfo?> Load(NpgsqlConnector conn, NpgsqlTimeout timeout, bool async)
+        => throw new NotImplementedException();
+
+    /// <summary>
+    /// Given a connection, loads all necessary information about the connected database, e.g. its types.
+    /// A factory should only handle the exact database type it was meant for, and return null otherwise.
+    /// </summary>
+    /// <returns>
+    /// An object describing the database to which <paramref name="conn"/> is connected, or null if the
+    /// database isn't of the correct type and isn't handled by this factory.
+    /// </returns>
+    Task<NpgsqlDatabaseInfo?> Load(NpgsqlConnector conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
+        => Load(conn, timeout, async);
 }

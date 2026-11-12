@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
+using static Npgsql.Util.Statics;
 
 namespace Npgsql.Replication.PgOutput;
 
@@ -139,6 +141,11 @@ public class PgOutputReplicationOptions : IEquatable<PgOutputReplicationOptions>
     /// </summary>
     /// <remarks>
     /// This works in PostgreSQL versions 15+
+    /// <para>
+    /// Enabling this changes the replication slot: once replication starts with it, the server enables two-phase decoding for the
+    /// slot, and later replication on the slot receives prepared transactions even without this option. Before PostgreSQL 18,
+    /// which can change it with ALTER_REPLICATION_SLOT, this can't be undone.
+    /// </para>
     /// </remarks>
     // See: https://github.com/postgres/postgres/commit/a8fd13cab0ba815e9925dc9676e6309f699b5f72
     // and https://github.com/postgres/postgres/commit/63cf61cdeb7b0450dcf3b2f719c553177bac85a2
@@ -146,8 +153,13 @@ public class PgOutputReplicationOptions : IEquatable<PgOutputReplicationOptions>
 
     internal IEnumerable<KeyValuePair<string, string?>> GetOptionPairs()
     {
+        // PublicationNames can still be emptied after the constructor's check, and pgoutput would take an empty list as no
+        // publication at all
+        if (PublicationNames.Count == 0)
+            throw new InvalidOperationException("PublicationNames must contain at least one publication name.");
+
         yield return new KeyValuePair<string, string?>("proto_version", ((ulong)ProtocolVersion).ToString(CultureInfo.InvariantCulture));
-        yield return new KeyValuePair<string, string?>("publication_names", "\"" + string.Join("\",\"", PublicationNames) + "\"");
+        yield return new KeyValuePair<string, string?>("publication_names", QuoteIdentifierList(PublicationNames));
 
         if (Binary != null)
             yield return new KeyValuePair<string, string?>("binary", Binary.Value ? "on" : "off");
@@ -171,7 +183,7 @@ public class PgOutputReplicationOptions : IEquatable<PgOutputReplicationOptions>
     public bool Equals(PgOutputReplicationOptions? other)
         => other != null && (
             ReferenceEquals(this, other) ||
-            ProtocolVersion == other.ProtocolVersion && PublicationNames.Equals(other.PublicationNames) && Binary == other.Binary &&
+            ProtocolVersion == other.ProtocolVersion && PublicationNames.SequenceEqual(other.PublicationNames) && Binary == other.Binary &&
             StreamingMode == other.StreamingMode && Messages == other.Messages && TwoPhase == other.TwoPhase);
 
     /// <inheritdoc />
@@ -179,5 +191,16 @@ public class PgOutputReplicationOptions : IEquatable<PgOutputReplicationOptions>
         => obj is PgOutputReplicationOptions other && other.Equals(this);
 
     /// <inheritdoc />
-    public override int GetHashCode() => HashCode.Combine(ProtocolVersion, PublicationNames, Binary, StreamingMode, Messages, TwoPhase);
+    public override int GetHashCode()
+    {
+        var hashCode = new HashCode();
+        hashCode.Add(ProtocolVersion);
+        foreach (var publicationName in PublicationNames)
+            hashCode.Add(publicationName);
+        hashCode.Add(Binary);
+        hashCode.Add(StreamingMode);
+        hashCode.Add(Messages);
+        hashCode.Add(TwoPhase);
+        return hashCode.ToHashCode();
+    }
 }

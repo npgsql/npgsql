@@ -307,7 +307,7 @@ public class CommandTests : TestBase
         var t = cmd.ExecuteScalarAsync(new(canceled: true));
         Assert.That(t.IsCompleted, Is.True); // checks, if a query has completed synchronously
         Assert.That(t.Status, Is.EqualTo(TaskStatus.Canceled));
-        Assert.ThrowsAsync<OperationCanceledException>(async () => await t);
+        await Assert.ThrowsAsync<OperationCanceledException>(async () => await t);
 
         Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
         Assert.That(await conn.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1));
@@ -322,7 +322,7 @@ public class CommandTests : TestBase
         var t = cmd.ExecuteNonQueryAsync(cancellationSource.Token);
         cancellationSource.Cancel();
 
-        var exception = Assert.ThrowsAsync<OperationCanceledException>(async () => await t)!;
+        var exception = (await Assert.ThrowsAsync<OperationCanceledException>(async () => await t))!;
         Assert.That(exception.InnerException,
             Is.TypeOf<PostgresException>().With.Property(nameof(PostgresException.SqlState)).EqualTo(PostgresErrorCodes.QueryCanceled));
         Assert.That(exception.CancellationToken, Is.EqualTo(cancellationSource.Token));
@@ -362,7 +362,7 @@ public class CommandTests : TestBase
              .WriteReadyForQuery()
              .FlushAsync();
 
-        var exception = Assert.ThrowsAsync<OperationCanceledException>(async () => await t)!;
+        var exception = (await Assert.ThrowsAsync<OperationCanceledException>(async () => await t))!;
         Assert.That(exception.InnerException,
             Is.TypeOf<PostgresException>().With.Property(nameof(PostgresException.SqlState)).EqualTo(PostgresErrorCodes.QueryCanceled));
         Assert.That(exception.CancellationToken, Is.EqualTo(cancellationSource.Token));
@@ -385,7 +385,7 @@ public class CommandTests : TestBase
         var t = cmd.ExecuteScalarAsync(cancellationSource.Token);
         cancellationSource.Cancel();
 
-        var exception = Assert.ThrowsAsync<OperationCanceledException>(async () => await t)!;
+        var exception = (await Assert.ThrowsAsync<OperationCanceledException>(async () => await t))!;
         Assert.That(exception.InnerException, Is.TypeOf<TimeoutException>());
         Assert.That(exception.CancellationToken, Is.EqualTo(cancellationSource.Token));
 
@@ -425,7 +425,7 @@ public class CommandTests : TestBase
 
         if (isBroken)
         {
-            Assert.ThrowsAsync<OperationCanceledException>(async () => await t);
+            await Assert.ThrowsAsync<OperationCanceledException>(async () => await t);
             Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
         }
         else
@@ -438,14 +438,14 @@ public class CommandTests : TestBase
                 .WriteCommandComplete()
                 .WriteReadyForQuery()
                 .FlushAsync();
-            Assert.DoesNotThrowAsync(async () => await t);
+            await Assert.DoesNotThrowAsync(async () => await t);
             Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
             await conn.CloseAsync();
         }
 
         // Release the cancellation at the server side, and make sure it completes without an exception
         cancellationRequest.Complete();
-        Assert.DoesNotThrowAsync(async () => await cancelTask);
+        await Assert.DoesNotThrowAsync(async () => await cancelTask);
     }
 
     [Test, Description("Check that cancel only affects the command on which its was invoked")]
@@ -644,6 +644,7 @@ public class CommandTests : TestBase
     {
         await using var dataSource = CreateDataSource();
         await using var conn = await dataSource.OpenConnectionAsync();
+        TestUtil.MaximumPgVersionExclusive(conn, "19.0", "PostgreSQL 19 requires standard_conforming_strings to be on");
 
         await conn.ExecuteNonQueryAsync("set standard_conforming_strings=off");
         Assert.That(await conn.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1));
@@ -893,7 +894,7 @@ $$ LANGUAGE plpgsql;";
         cmd.Parameters.AddWithValue("g", largeParam);
         cmd.Parameters.AddWithValue("h", largeParam);
 
-        Assert.ThrowsAsync<OverflowException>(() => cmd.ExecuteReaderAsync());
+        await Assert.ThrowsAsync<OverflowException>(() => cmd.ExecuteReaderAsync());
     }
 
     [Test]
@@ -926,7 +927,7 @@ $$ LANGUAGE plpgsql;";
             H = largeString
         });
 
-        var ex = Assert.ThrowsAsync<InvalidCastException>(async () => await cmd.ExecuteNonQueryAsync());
+        var ex = await Assert.ThrowsAsync<InvalidCastException>(async () => await cmd.ExecuteNonQueryAsync());
         Assert.That(ex!.InnerException, Is.TypeOf<OverflowException>());
     }
 
@@ -966,7 +967,7 @@ $$ LANGUAGE plpgsql;";
         };
         cmd.Parameters.AddWithValue("a", array);
 
-        var ex = Assert.ThrowsAsync<InvalidCastException>(async () => await cmd.ExecuteNonQueryAsync());
+        var ex = await Assert.ThrowsAsync<InvalidCastException>(async () => await cmd.ExecuteNonQueryAsync());
         Assert.That(ex!.InnerException, Is.TypeOf<OverflowException>());
     }
 
@@ -1005,7 +1006,7 @@ $$ LANGUAGE plpgsql;";
             DataTypeName = rangeType
         });
 
-        var ex = Assert.ThrowsAsync<InvalidCastException>(async () => await cmd.ExecuteNonQueryAsync());
+        var ex = await Assert.ThrowsAsync<InvalidCastException>(async () => await cmd.ExecuteNonQueryAsync());
         Assert.That(ex!.InnerException, Is.TypeOf<OverflowException>());
     }
 
@@ -1049,7 +1050,7 @@ $$ LANGUAGE plpgsql;";
             DataTypeName = rangeType + "_multirange"
         });
 
-        var ex = Assert.ThrowsAsync<InvalidCastException>(async () => await cmd.ExecuteNonQueryAsync());
+        var ex = await Assert.ThrowsAsync<InvalidCastException>(async () => await cmd.ExecuteNonQueryAsync());
         Assert.That(ex!.InnerException, Is.TypeOf<OverflowException>());
     }
 
@@ -1089,7 +1090,7 @@ $$ LANGUAGE plpgsql;";
         var sql = $"insert into {table2} ({table1}_id) values (1) returning id";
 
         var ex = async
-            ? Assert.ThrowsAsync<PostgresException>(async () => await conn.ExecuteNonQueryAsync(sql))
+            ? await Assert.ThrowsAsync<PostgresException>(async () => await conn.ExecuteNonQueryAsync(sql))
             : Assert.Throws<PostgresException>(() => conn.ExecuteNonQuery(sql));
         Assert.That(ex!.SqlState, Is.EqualTo(PostgresErrorCodes.ForeignKeyViolation));
     }
@@ -1105,7 +1106,7 @@ $$ LANGUAGE plpgsql;";
         var sql = $"insert into {table2} ({table1}_id) values (1) returning id";
 
         var ex = async
-            ? Assert.ThrowsAsync<PostgresException>(async () => await conn.ExecuteScalarAsync(sql))
+            ? await Assert.ThrowsAsync<PostgresException>(async () => await conn.ExecuteScalarAsync(sql))
             : Assert.Throws<PostgresException>(() => conn.ExecuteScalar(sql));
         Assert.That(ex!.SqlState, Is.EqualTo(PostgresErrorCodes.ForeignKeyViolation));
     }
@@ -1130,7 +1131,7 @@ $$ LANGUAGE plpgsql;";
         Assert.That(value, Is.EqualTo(1));
         Assert.That(async ? await reader.ReadAsync() : reader.Read(), Is.False);
         var ex = async
-            ? Assert.ThrowsAsync<PostgresException>(async () => await reader.NextResultAsync())
+            ? await Assert.ThrowsAsync<PostgresException>(async () => await reader.NextResultAsync())
             : Assert.Throws<PostgresException>(() => reader.NextResult());
         Assert.That(ex!.SqlState, Is.EqualTo(PostgresErrorCodes.ForeignKeyViolation));
     }
@@ -1351,7 +1352,7 @@ $$ LANGUAGE plpgsql;";
         await serverMock
             .WriteScalarResponseAndFlush(1);
 
-        var ex = Assert.ThrowsAsync<NpgsqlException>(async () => await queryTask)!;
+        var ex = (await Assert.ThrowsAsync<NpgsqlException>(async () => await queryTask))!;
         Assert.That(ex.InnerException, Is.TypeOf<NpgsqlException>()
             .With.InnerException.TypeOf<PostgresException>());
     }
@@ -1385,7 +1386,7 @@ $$ LANGUAGE plpgsql;";
 
         command.CommandText = "SELECT $1";
         command.Parameters.Add(new() { NpgsqlDbType = NpgsqlDbType.Integer });
-        Assert.DoesNotThrowAsync(() => command.PrepareAsync());
+        await Assert.DoesNotThrowAsync(() => command.PrepareAsync());
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/4621")]
@@ -1406,7 +1407,7 @@ $$ LANGUAGE plpgsql;";
             .WriteReadyForQuery()
             .FlushAsync();
 
-        var ex = Assert.ThrowsAsync<PostgresException>(async () => await queryTask)!;
+        var ex = (await Assert.ThrowsAsync<PostgresException>(async () => await queryTask))!;
         Assert.That(ex.SqlState, Is.EqualTo(PostgresErrorCodes.SqlClientUnableToEstablishSqlConnection));
         Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
     }
@@ -1428,7 +1429,7 @@ $$ LANGUAGE plpgsql;";
         var server = await postmasterMock.WaitForServerConnection();
         server.Close();
 
-        Assert.ThrowsAsync<NpgsqlException>(async () => await queryTask);
+        await Assert.ThrowsAsync<NpgsqlException>(async () => await queryTask);
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/4906")]
@@ -1471,7 +1472,7 @@ $$ LANGUAGE plpgsql;";
             await cancelTask;
             await cancellationRequestTask;
 
-            Assert.ThrowsAsync<PostgresException>(async () => await queryTask);
+            await Assert.ThrowsAsync<PostgresException>(async () => await queryTask);
             Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));
             return;
         }
@@ -1489,7 +1490,7 @@ $$ LANGUAGE plpgsql;";
             .WriteReadyForQuery()
             .FlushAsync();
 
-        Assert.ThrowsAsync<OperationCanceledException>(async () => await queryTask);
+        await Assert.ThrowsAsync<OperationCanceledException>(async () => await queryTask);
 
         queryTask = conn.ExecuteNonQueryAsync("SELECT 1");
         await server.ExpectExtendedQuery();
@@ -1520,7 +1521,7 @@ FROM
         using (var cts = new CancellationTokenSource())
         await using (var reader = await cmd.ExecuteReaderAsync(cts.Token))
         {
-            Assert.ThrowsAsync<OperationCanceledException>(async () =>
+            await Assert.ThrowsAsync<OperationCanceledException>(async () =>
             {
                 var i = 0;
                 while (await reader.ReadAsync(cts.Token))

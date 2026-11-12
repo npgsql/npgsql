@@ -17,11 +17,8 @@ public abstract class PgStreamingConverter<T> : PgConverter<T>
     [Obsolete("Call the parameterless constructor and set HandleDbNull directly.")]
     protected PgStreamingConverter(bool customDbNullPredicate) => HandleDbNull = customDbNullPredicate;
 
-    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
-    {
-        bufferRequirements = BufferRequirements.Streaming;
-        return format is DataFormat.Binary;
-    }
+    public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
+        => ConverterDescriptor.Invariant with { BufferRequirements = BufferRequirements.Streaming };
 
     // Workaround for trimming https://github.com/dotnet/runtime/issues/92850#issuecomment-1744521361
     internal Task<T>? ReadAsyncAsTask(PgReader reader, CancellationToken cancellationToken, out T result)

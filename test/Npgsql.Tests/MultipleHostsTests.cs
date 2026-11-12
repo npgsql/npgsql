@@ -233,7 +233,7 @@ public class MultipleHostsTests : TestBase
         await using var dataSource = new NpgsqlDataSourceBuilder(connectionStringBuilder.ConnectionString)
             .BuildMultiHost();
 
-        var exception = Assert.ThrowsAsync<NpgsqlException>(async () => await dataSource.OpenConnectionAsync(targetSessionAttributes))!;
+        var exception = (await Assert.ThrowsAsync<NpgsqlException>(async () => await dataSource.OpenConnectionAsync(targetSessionAttributes)))!;
         Assert.That(exception.Message, Is.EqualTo("No suitable host was found."));
         Assert.That(exception.InnerException, Is.Null);
 
@@ -241,8 +241,8 @@ public class MultipleHostsTests : TestBase
             _ = await postmasters[i].WaitForServerConnection();
     }
 
-    [Test, Platform(Exclude = "MacOsX", Reason = "#3786")]
-    public void All_hosts_are_down()
+    [Test, Platform(Exclude = PlatformNames.MacOSX, Reason = "https://github.com/npgsql/npgsql/issues/3786")]
+    public async Task All_hosts_are_down()
     {
         var endpoint = new IPEndPoint(IPAddress.Loopback, 0);
 
@@ -262,7 +262,7 @@ public class MultipleHostsTests : TestBase
         }.ConnectionString;
         using var dataSource = new NpgsqlDataSourceBuilder(connectionString).BuildMultiHost();
 
-        var exception = Assert.ThrowsAsync<NpgsqlException>(async () => await dataSource.OpenConnectionAsync(TargetSessionAttributes.Any))!;
+        var exception = (await Assert.ThrowsAsync<NpgsqlException>(async () => await dataSource.OpenConnectionAsync(TargetSessionAttributes.Any)))!;
         var aggregateException = (AggregateException)exception.InnerException!;
         Assert.That(aggregateException.InnerExceptions, Has.Count.EqualTo(2));
 
@@ -291,7 +291,7 @@ public class MultipleHostsTests : TestBase
 
         await using var dataSource = new NpgsqlDataSourceBuilder(builder.ConnectionString).BuildMultiHost();
 
-        var ex = Assert.ThrowsAsync<PostgresException>(async () => await dataSource.OpenConnectionAsync(TargetSessionAttributes.Any))!;
+        var ex = (await Assert.ThrowsAsync<PostgresException>(async () => await dataSource.OpenConnectionAsync(TargetSessionAttributes.Any)))!;
         Assert.That(ex.SqlState, Is.EqualTo(errorCode));
     }
 
@@ -600,7 +600,7 @@ public class MultipleHostsTests : TestBase
         await using var dataSource = server.CreateDataSource();
         await using var conn = dataSource.CreateConnection();
 
-        var ex = Assert.ThrowsAsync<PostgresException>(conn.OpenAsync)!;
+        var ex = (await Assert.ThrowsAsync<PostgresException>(conn.OpenAsync))!;
         Assert.That(ex.SqlState, Is.EqualTo(PostgresErrorCodes.ConnectionFailure));
 
         var state = conn.NpgsqlDataSource.GetDatabaseState();
@@ -614,7 +614,7 @@ public class MultipleHostsTests : TestBase
         await using var dataSource = server.CreateDataSource();
         await using var conn = dataSource.CreateConnection();
 
-        var ex = Assert.ThrowsAsync<PostgresException>(conn.OpenAsync)!;
+        var ex = (await Assert.ThrowsAsync<PostgresException>(conn.OpenAsync))!;
         Assert.That(ex.SqlState, Is.EqualTo(PostgresErrorCodes.InvalidAuthorizationSpecification));
 
         var state = conn.NpgsqlDataSource.GetDatabaseState();
@@ -637,7 +637,7 @@ public class MultipleHostsTests : TestBase
         var server = await postmaster.WaitForServerConnection();
         await server.WriteErrorResponse(PostgresErrorCodes.CrashShutdown).FlushAsync();
 
-        var ex = Assert.ThrowsAsync<PostgresException>(() => conn.ExecuteNonQueryAsync("SELECT 1"))!;
+        var ex = (await Assert.ThrowsAsync<PostgresException>(() => conn.ExecuteNonQueryAsync("SELECT 1")))!;
         Assert.That(ex.SqlState, Is.EqualTo(PostgresErrorCodes.CrashShutdown));
         Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));
 
@@ -659,7 +659,7 @@ public class MultipleHostsTests : TestBase
         Assert.That(state, Is.EqualTo(expectedState));
         Assert.That(dataSource.Statistics.Total, Is.EqualTo(1));
 
-        var ex = Assert.ThrowsAsync<PostgresException>(() => conn.ExecuteNonQueryAsync("SELECT abc"))!;
+        var ex = (await Assert.ThrowsAsync<PostgresException>(() => conn.ExecuteNonQueryAsync("SELECT abc")))!;
         Assert.That(ex.SqlState, Is.EqualTo(PostgresErrorCodes.UndefinedColumn));
         Assert.That(conn.State, Is.EqualTo(ConnectionState.Open));
 
@@ -684,7 +684,7 @@ public class MultipleHostsTests : TestBase
         var server = await postmaster.WaitForServerConnection();
         server.Close();
 
-        var ex = Assert.ThrowsAsync<NpgsqlException>(() => conn.ExecuteNonQueryAsync("SELECT 1"))!;
+        var ex = (await Assert.ThrowsAsync<NpgsqlException>(() => conn.ExecuteNonQueryAsync("SELECT 1")))!;
         Assert.That(ex.InnerException, Is.InstanceOf<IOException>());
         Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));
 
@@ -711,7 +711,7 @@ public class MultipleHostsTests : TestBase
         Assert.That(state, Is.EqualTo(DatabaseState.Unknown));
         Assert.That(conn.NpgsqlDataSource.Statistics.Total, Is.EqualTo(2));
 
-        var ex = Assert.ThrowsAsync<NpgsqlException>(() => conn.ExecuteNonQueryAsync("SELECT 1"))!;
+        var ex = (await Assert.ThrowsAsync<NpgsqlException>(() => conn.ExecuteNonQueryAsync("SELECT 1")))!;
         Assert.That(ex.InnerException, Is.TypeOf<TimeoutException>());
         Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));
 
@@ -738,7 +738,7 @@ public class MultipleHostsTests : TestBase
         Assert.That(state, Is.EqualTo(DatabaseState.Unknown));
         Assert.That(conn.NpgsqlDataSource.Statistics.Total, Is.EqualTo(2));
 
-        var ex = Assert.ThrowsAsync<NpgsqlException>(() => conn.ExecuteNonQueryAsync("SELECT 1"))!;
+        var ex = (await Assert.ThrowsAsync<NpgsqlException>(() => conn.ExecuteNonQueryAsync("SELECT 1")))!;
         Assert.That(ex.InnerException, Is.TypeOf<TimeoutException>());
         Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));
 
@@ -769,7 +769,7 @@ public class MultipleHostsTests : TestBase
 
         var query = conn.ExecuteNonQueryAsync("SELECT 1", cancellationToken: cts.Token);
         cts.Cancel();
-        var ex = Assert.ThrowsAsync<OperationCanceledException>(async () => await query)!;
+        var ex = (await Assert.ThrowsAsync<OperationCanceledException>(async () => await query))!;
         Assert.That(ex.InnerException, Is.TypeOf<TimeoutException>());
         Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));
 
@@ -801,7 +801,7 @@ public class MultipleHostsTests : TestBase
         await postmaster.WaitForCancellationRequest();
         await server.WriteCancellationResponse().WriteReadyForQuery().FlushAsync();
 
-        var ex = Assert.ThrowsAsync<NpgsqlException>(async () => await query)!;
+        var ex = (await Assert.ThrowsAsync<NpgsqlException>(async () => await query))!;
         Assert.That(ex.InnerException, Is.TypeOf<TimeoutException>());
         Assert.That(conn.State, Is.EqualTo(ConnectionState.Open));
 
@@ -842,7 +842,7 @@ public class MultipleHostsTests : TestBase
         var server = await primaryPostmaster.WaitForServerConnection();
         await server.WriteErrorResponse(PostgresErrorCodes.AdminShutdown).FlushAsync();
 
-        var ex = Assert.ThrowsAsync<PostgresException>(() => primaryConn.ExecuteNonQueryAsync("SELECT 1"))!;
+        var ex = (await Assert.ThrowsAsync<PostgresException>(() => primaryConn.ExecuteNonQueryAsync("SELECT 1")))!;
         Assert.That(ex.SqlState, Is.EqualTo(PostgresErrorCodes.AdminShutdown));
         Assert.That(primaryConn.State, Is.EqualTo(ConnectionState.Closed));
 
@@ -951,10 +951,10 @@ public class MultipleHostsTests : TestBase
             .WriteErrorResponse(PostgresErrorCodes.AdminShutdown)
             .FlushAsync();
 
-        var failoverEx = Assert.ThrowsAsync<PostgresException>(async () => await conn.ExecuteNonQueryAsync("SELECT 1"))!;
+        var failoverEx = (await Assert.ThrowsAsync<PostgresException>(async () => await conn.ExecuteNonQueryAsync("SELECT 1")))!;
         Assert.That(failoverEx.SqlState, Is.EqualTo(PostgresErrorCodes.AdminShutdown));
 
-        var noHostFoundEx = Assert.ThrowsAsync<NpgsqlException>(async () => await conn.OpenAsync())!;
+        var noHostFoundEx = (await Assert.ThrowsAsync<NpgsqlException>(async () => await conn.OpenAsync()))!;
         Assert.That(noHostFoundEx.Message, Is.EqualTo("No suitable host was found."));
 
         Assert.That(firstDataSource.GetDatabaseState(), Is.EqualTo(DatabaseState.Offline));
@@ -976,7 +976,7 @@ public class MultipleHostsTests : TestBase
     }
 
     [Test, NonParallelizable]
-    public void IntegrationTest([Values] bool loadBalancing, [Values] bool alwaysCheckHostState)
+    public async Task IntegrationTest([Values] bool loadBalancing, [Values] bool alwaysCheckHostState)
     {
         PoolManager.Reset();
 
@@ -1005,9 +1005,9 @@ public class MultipleHostsTests : TestBase
         var onlyStandbyClient = Client(dataSource, TargetSessionAttributes.Standby);
         var readOnlyClient = Client(dataSource, TargetSessionAttributes.ReadOnly);
 
-        Assert.DoesNotThrowAsync(() => clientsTask);
-        Assert.ThrowsAsync<NpgsqlException>(() => onlyStandbyClient);
-        Assert.ThrowsAsync<NpgsqlException>(() => readOnlyClient);
+        await Assert.DoesNotThrowAsync(() => clientsTask);
+        await Assert.ThrowsAsync<NpgsqlException>(() => onlyStandbyClient);
+        await Assert.ThrowsAsync<NpgsqlException>(() => readOnlyClient);
         Assert.That(queriesDone, Is.EqualTo(125));
 
         Task Client(NpgsqlMultiHostDataSource multiHostDataSource, TargetSessionAttributes targetSessionAttributes)
@@ -1139,13 +1139,39 @@ public class MultipleHostsTests : TestBase
     {
         var builder = new NpgsqlDataSourceBuilder(ConnectionString);
         await using var dataSource = builder.BuildMultiHost();
-        using var cts = new CancellationTokenSource();
-        cts.Cancel();
-        var ex = Assert.ThrowsAsync<OperationCanceledException>(async () =>
+        var cancellationToken = new CancellationToken(true);
+        var ex = await Assert.ThrowsAsync<OperationCanceledException>(async () =>
         {
-            await using var connection = await dataSource.OpenConnectionAsync(cts.Token);
+            await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
         });
-        Assert.That(ex.CancellationToken, Is.EqualTo(cts.Token));
+        Assert.That(ex.CancellationToken, Is.EqualTo(cancellationToken));
+    }
+
+    [Test]
+    public async Task OpenConnection_when_canceled_during_TryGet_throws_OperationCanceledException()
+    {
+        await using var primary1 = PgPostmasterMock.Start(state: Primary);
+        await using var primary2 = PgPostmasterMock.Start(state: Primary);
+
+        var connectionString = new NpgsqlConnectionStringBuilder($"Host={primary1.Host}:{primary1.Port},{primary2.Host}:{primary2.Port}")
+            {
+                ServerCompatibilityMode = ServerCompatibilityMode.NoTypeLoading,
+                MaxPoolSize = 1
+            }.ToString();
+        await using var dataSource = new NpgsqlDataSourceBuilder(connectionString).BuildMultiHost();
+
+        // Exhaust the pool so that TryGetIdleOrNew returns null and we fall through to TryGet
+        await using var conn1 = await dataSource.OpenConnectionAsync(TargetSessionAttributes.Primary);
+        await using var conn2 = await dataSource.OpenConnectionAsync(TargetSessionAttributes.Primary);
+
+        var cancellationToken = new CancellationToken(true);
+
+        var ex = await Assert.ThrowsAsync<OperationCanceledException>(async () =>
+        {
+            await using var conn3 = await dataSource.OpenConnectionAsync(TargetSessionAttributes.Primary, cancellationToken);
+        });
+
+        Assert.That(ex.CancellationToken, Is.EqualTo(cancellationToken));
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/4181")]

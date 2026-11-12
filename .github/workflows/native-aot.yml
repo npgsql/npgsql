@@ -91,19 +91,19 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ ubuntu-24.04 ]
+        os: [ ubuntu-26.04 ]
         pg_major: [ 18 ]
         tfm: [ net11.0 ]
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       
       #      - name: Setup nuget config
       #        run: echo "$nuget_config" > NuGet.config
   
       - name: NuGet Cache
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ~/.nuget/packages
           key: ${{ runner.os }}-nuget-${{ hashFiles('**/Directory.Build.targets') }}
@@ -111,9 +111,7 @@ jobs:
             ${{ runner.os }}-nuget-
 
       - name: Setup .NET Core SDK
-        uses: actions/setup-dotnet@v5.2.0
-        with:
-          global-json-file: ${{ env.global_json_file }}
+        uses: actions/setup-dotnet@v6.1.0
 
       - name: Write script
         run: echo "$AOT_Compat" > test-aot-compatibility.ps1
@@ -127,19 +125,19 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04]
+        os: [ubuntu-26.04]
         pg_major: [ 18 ]
         tfm: [ net11.0 ]
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       #      - name: Setup nuget config
       #        run: echo "$nuget_config" > NuGet.config
 
       - name: NuGet Cache
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ~/.nuget/packages
           key: ${{ runner.os }}-nuget-${{ hashFiles('**/Directory.Build.targets') }}
@@ -147,9 +145,7 @@ jobs:
             ${{ runner.os }}-nuget-
 
       - name: Setup .NET Core SDK
-        uses: actions/setup-dotnet@v5.2.0
-        with:
-          global-json-file: ${{ env.global_json_file }}
+        uses: actions/setup-dotnet@v6.1.0
 
       - name: Start PostgreSQL
         run: |
@@ -162,7 +158,7 @@ jobs:
         shell: bash
 
       # Uncomment the following to SSH into the agent running the build (https://github.com/mxschmitt/action-tmate)
-      #- uses: actions/checkout@v6
+      #- uses: actions/checkout@v7
       #- name: Setup tmate session
       #  uses: mxschmitt/action-tmate@v3
 

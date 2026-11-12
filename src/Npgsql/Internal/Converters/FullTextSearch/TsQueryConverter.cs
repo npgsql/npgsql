@@ -10,7 +10,7 @@ using static NpgsqlTypes.NpgsqlTsQuery.NodeKind;
 // ReSharper disable once CheckNamespace
 namespace Npgsql.Internal.Converters;
 
-sealed class TsQueryConverter<T>(Encoding encoding) : PgStreamingConverter<T>
+sealed class TsQueryConverter<T> : PgStreamingConverter<T>
     where T : NpgsqlTsQuery
 {
     public override T Read(PgReader reader)
@@ -21,6 +21,7 @@ sealed class TsQueryConverter<T>(Encoding encoding) : PgStreamingConverter<T>
 
     async ValueTask<NpgsqlTsQuery> Read(bool async, PgReader reader, CancellationToken cancellationToken)
     {
+        var encoding = reader.ConversionContext.TextEncoding;
         if (reader.ShouldBuffer(sizeof(int)))
             await reader.Buffer(async, sizeof(int), cancellationToken).ConfigureAwait(false);
         var numTokens = reader.ReadInt32();
@@ -124,21 +125,21 @@ sealed class TsQueryConverter<T>(Encoding encoding) : PgStreamingConverter<T>
     protected override Size BindValue(in BindContext context, T value, ref object? writeState)
         => value.Kind is Empty
             ? 4
-            : 4 + GetNodeLength(value);
+            : 4 + GetNodeLength(value, context.ConversionContext.TextEncoding);
 
-    int GetNodeLength(NpgsqlTsQuery node)
+    static int GetNodeLength(NpgsqlTsQuery node, Encoding encoding)
         => node.Kind switch
         {
             Lexeme when encoding.GetByteCount(((NpgsqlTsQueryLexeme)node).Text) is var strLen
                 => strLen > 2046
                     ? throw new InvalidCastException("Lexeme text too long. Must be at most 2046 encoded bytes.")
                     : 4 + strLen,
-            And or Or => 2 + GetNodeLength(((NpgsqlTsQueryBinOp)node).Left) + GetNodeLength(((NpgsqlTsQueryBinOp)node).Right),
-            Not => 2 + GetNodeLength(((NpgsqlTsQueryNot)node).Child),
+            And or Or => 2 + GetNodeLength(((NpgsqlTsQueryBinOp)node).Left, encoding) + GetNodeLength(((NpgsqlTsQueryBinOp)node).Right, encoding),
+            Not => 2 + GetNodeLength(((NpgsqlTsQueryNot)node).Child, encoding),
             Empty => throw new InvalidOperationException("Empty tsquery nodes must be top-level"),
 
             // 2 additional bytes for uint16 phrase operator "distance" field.
-            Phrase => 4 + GetNodeLength(((NpgsqlTsQueryBinOp)node).Left) + GetNodeLength(((NpgsqlTsQueryBinOp)node).Right),
+            Phrase => 4 + GetNodeLength(((NpgsqlTsQueryBinOp)node).Left, encoding) + GetNodeLength(((NpgsqlTsQueryBinOp)node).Right, encoding),
 
             _ => throw new UnreachableException(
                 $"Internal Npgsql bug: unexpected value {node.Kind} of enum {nameof(NpgsqlTsQuery.NodeKind)}. Please file a bug.")
@@ -152,6 +153,7 @@ sealed class TsQueryConverter<T>(Encoding encoding) : PgStreamingConverter<T>
 
     async ValueTask Write(bool async, PgWriter writer, NpgsqlTsQuery value, CancellationToken cancellationToken)
     {
+        var encoding = writer.ConversionContext.TextEncoding;
         var numTokens = GetTokenCount(value);
 
         if (writer.ShouldFlush(sizeof(int)))

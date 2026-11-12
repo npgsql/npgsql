@@ -106,11 +106,23 @@ sealed class ExtraConversionResolverFactory : PgTypeInfoResolverFactory
             // Text
             // Update PgSerializerOptions.IsWellKnownTextType(Type) after any changes to this list.
             mappings.AddType<char[]>(DataTypeNames.Text,
-                static (options, mapping, _) => mapping.CreateInfo(options, new CharArrayTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text));
+                static (options, mapping, _) =>
+                {
+                    var converter = new CharArrayTextConverter();
+                    return mapping.CreateInfo(options, binary: converter, text: converter, preferredFormat: DataFormat.Text);
+                });
             mappings.AddStructType<ReadOnlyMemory<char>>(DataTypeNames.Text,
-                static (options, mapping, _) => mapping.CreateInfo(options, TextConverter.CreateReadOnlyMemoryConverter(options.TextEncoding), preferredFormat: DataFormat.Text));
+                static (options, mapping, _) =>
+                {
+                    var converter = TextConverter.CreateReadOnlyMemoryConverter();
+                    return mapping.CreateInfo(options, binary: converter, text: converter, preferredFormat: DataFormat.Text);
+                });
             mappings.AddStructType<ArraySegment<char>>(DataTypeNames.Text,
-                static (options, mapping, _) => mapping.CreateInfo(options, new CharArraySegmentTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text));
+                static (options, mapping, _) =>
+                {
+                    var converter = new CharArraySegmentTextConverter();
+                    return mapping.CreateInfo(options, binary: converter, text: converter, preferredFormat: DataFormat.Text);
+                });
 
             // Alternative text types
             foreach(var dataTypeName in new[] { "citext", DataTypeNames.Varchar,
@@ -118,28 +130,52 @@ sealed class ExtraConversionResolverFactory : PgTypeInfoResolverFactory
                         DataTypeNames.Xml, DataTypeNames.Name, DataTypeNames.RefCursor })
             {
                 mappings.AddType<char[]>(dataTypeName,
-                    static (options, mapping, _) => mapping.CreateInfo(options, new CharArrayTextConverter(options.TextEncoding),
-                        preferredFormat: DataFormat.Text));
+                    static (options, mapping, _) =>
+                    {
+                        var converter = new CharArrayTextConverter();
+                        return mapping.CreateInfo(options, binary: converter, text: converter, preferredFormat: DataFormat.Text);
+                    });
                 mappings.AddStructType<ReadOnlyMemory<char>>(dataTypeName,
-                    static (options, mapping, _) => mapping.CreateInfo(options, TextConverter.CreateReadOnlyMemoryConverter(options.TextEncoding),
-                        preferredFormat: DataFormat.Text));
+                    static (options, mapping, _) =>
+                    {
+                        var converter = TextConverter.CreateReadOnlyMemoryConverter();
+                        return mapping.CreateInfo(options, binary: converter, text: converter, preferredFormat: DataFormat.Text);
+                    });
                 mappings.AddStructType<ArraySegment<char>>(dataTypeName,
-                    static (options, mapping, _) => mapping.CreateInfo(options, new CharArraySegmentTextConverter(options.TextEncoding),
-                        preferredFormat: DataFormat.Text));
+                    static (options, mapping, _) =>
+                    {
+                        var converter = new CharArraySegmentTextConverter();
+                        return mapping.CreateInfo(options, binary: converter, text: converter, preferredFormat: DataFormat.Text);
+                    });
             }
 
             // Jsonb
             const byte jsonbVersion = 1;
             mappings.AddType<char[]>(DataTypeNames.Jsonb,
-                static (options, mapping, _) => mapping.CreateInfo(options, new VersionPrefixedTextConverter<char[]>(jsonbVersion, new CharArrayTextConverter(options.TextEncoding))));
+                static (options, mapping, _) =>
+                {
+                    var text = new CharArrayTextConverter();
+                    var binary = new VersionPrefixedTextConverter<char[]>(jsonbVersion, text);
+                    return mapping.CreateInfo(options, binary: binary, text: text);
+                });
             mappings.AddStructType<ReadOnlyMemory<char>>(DataTypeNames.Jsonb,
-                static (options, mapping, _) => mapping.CreateInfo(options, new VersionPrefixedTextConverter<ReadOnlyMemory<char>>(jsonbVersion, TextConverter.CreateReadOnlyMemoryConverter(options.TextEncoding))));
+                static (options, mapping, _) =>
+                {
+                    var text = TextConverter.CreateReadOnlyMemoryConverter();
+                    var binary = new VersionPrefixedTextConverter<ReadOnlyMemory<char>>(jsonbVersion, text);
+                    return mapping.CreateInfo(options, binary: binary, text: text);
+                });
             mappings.AddStructType<ArraySegment<char>>(DataTypeNames.Jsonb,
-                static (options, mapping, _) => mapping.CreateInfo(options, new VersionPrefixedTextConverter<ArraySegment<char>>(jsonbVersion, new CharArraySegmentTextConverter(options.TextEncoding))));
+                static (options, mapping, _) =>
+                {
+                    var text = new CharArraySegmentTextConverter();
+                    var binary = new VersionPrefixedTextConverter<ArraySegment<char>>(jsonbVersion, text);
+                    return mapping.CreateInfo(options, binary: binary, text: text);
+                });
 
             // Hstore
             mappings.AddType<ImmutableDictionary<string, string?>>("hstore",
-                static (options, mapping, _) => mapping.CreateInfo(options, new HstoreConverter<ImmutableDictionary<string, string?>>(options.TextEncoding, result => result.ToImmutableDictionary())));
+                static (options, mapping, _) => mapping.CreateInfo(options, new HstoreConverter<ImmutableDictionary<string, string?>>(result => result.ToImmutableDictionary())));
 
             return mappings;
         }

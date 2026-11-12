@@ -626,7 +626,7 @@ LANGUAGE 'plpgsql'");
         var cmd = conn.CreateCommand();
         cmd.CommandText = $"SELECT {function}()";
 
-        var exception = Assert.ThrowsAsync<PostgresException>(() => cmd.ExecuteReaderAsync(Behavior))!;
+        var exception = (await Assert.ThrowsAsync<PostgresException>(() => cmd.ExecuteReaderAsync(Behavior)))!;
         if (includeFailedBatchedCommand)
             Assert.That(exception.BatchCommand, Is.SameAs(cmd.InternalBatchCommands[0]));
         else
@@ -657,7 +657,7 @@ LANGUAGE 'plpgsql'");
 
         await using (var reader = await cmd.ExecuteReaderAsync(Behavior))
         {
-            var exception = Assert.ThrowsAsync<PostgresException>(() => reader.NextResultAsync())!;
+            var exception = (await Assert.ThrowsAsync<PostgresException>(() => reader.NextResultAsync()))!;
             if (includeFailedBatchedCommand)
                 Assert.That(exception.BatchCommand, Is.SameAs(cmd.InternalBatchCommands[1]));
             else
@@ -1125,7 +1125,7 @@ LANGUAGE plpgsql VOLATILE";
                 // After waiting, reader is free to reset prepared statements, which also increments StatementIndex
             };
 
-            Assert.ThrowsAsync<PostgresException>(firstReader.NextResultAsync);
+            await Assert.ThrowsAsync<PostgresException>(firstReader.NextResultAsync);
 
             secondMrs.Set();
         }
@@ -1296,7 +1296,7 @@ LANGUAGE plpgsql VOLATILE";
 
         await reader.GetFieldValueAsync<byte[]>(1);
 
-        Assert.DoesNotThrowAsync(reader.ReadAsync);
+        await Assert.DoesNotThrowAsync(reader.ReadAsync);
     }
 
     [Test] // #4377
@@ -1324,7 +1324,7 @@ LANGUAGE plpgsql VOLATILE";
         if (async)
             Assert.Throws<NpgsqlException>(() => reader.Dispose());
         else
-            Assert.ThrowsAsync<NpgsqlException>(async () => await reader.DisposeAsync());
+            await Assert.ThrowsAsync<NpgsqlException>(async () => await reader.DisposeAsync());
     }
 
     [Test]
@@ -2103,15 +2103,18 @@ LANGUAGE plpgsql VOLATILE";
         buffer.AddBytesToRead(columnLength);
         var reader = buffer.PgReader;
         reader.Init(DataFormat.Binary, columnLength, resumable: false);
+        // The test exercises PgReader buffering/cleanup independently of the converter, but PgFieldBinding
+        // now carries the converter; pull any built-in via the data source's options as a stand-in (never invoked here).
+        var converter = conn.Connector.SerializerOptions.GetDefaultTypeInfo(typeof(int))!.MakeConcreteForField(default).GetConverter(DataFormat.Binary);
         if (async)
-            await reader.StartReadAsync(new(DataFormat.Binary, Size.Unknown), CancellationToken.None);
+            await reader.StartReadAsync(new(DataFormat.Binary, Size.Unknown, converter), CancellationToken.None);
         else
-            reader.StartRead(new(DataFormat.Binary, Size.Unknown));
+            reader.StartRead(new(DataFormat.Binary, Size.Unknown, converter));
 
         await using (var _ = reader.GetStream())
         {
             if (async)
-                Assert.DoesNotThrowAsync(async () => await reader.EndReadAsync());
+                await Assert.DoesNotThrowAsync(async () => await reader.EndReadAsync());
             else
                 Assert.DoesNotThrow(() => reader.EndRead());
         }
@@ -2211,7 +2214,7 @@ LANGUAGE plpgsql VOLATILE";
                 .WriteReadyForQuery()
                 .FlushAsync();
 
-            var exception = Assert.ThrowsAsync<OperationCanceledException>(async () => await task)!;
+            var exception = (await Assert.ThrowsAsync<OperationCanceledException>(async () => await task))!;
             Assert.That(exception.InnerException,
                 Is.TypeOf<PostgresException>().With.Property(nameof(PostgresException.SqlState)).EqualTo(PostgresErrorCodes.QueryCanceled));
 
@@ -2258,7 +2261,7 @@ LANGUAGE plpgsql VOLATILE";
                 .WriteReadyForQuery()
                 .FlushAsync();
 
-            var exception = Assert.ThrowsAsync<OperationCanceledException>(async () => await task)!;
+            var exception = (await Assert.ThrowsAsync<OperationCanceledException>(async () => await task))!;
             Assert.That(exception.InnerException,
                 Is.TypeOf<PostgresException>().With.Property(nameof(PostgresException.SqlState)).EqualTo(PostgresErrorCodes.QueryCanceled));
             Assert.That(exception.CancellationToken, Is.EqualTo(cancellationSource.Token));
@@ -2307,7 +2310,7 @@ LANGUAGE plpgsql VOLATILE";
                 .WriteReadyForQuery()
                 .FlushAsync();
 
-            var exception = Assert.ThrowsAsync<OperationCanceledException>(async () => await task)!;
+            var exception = (await Assert.ThrowsAsync<OperationCanceledException>(async () => await task))!;
             Assert.That(exception.InnerException,
                 Is.TypeOf<PostgresException>().With.Property(nameof(PostgresException.SqlState)).EqualTo(PostgresErrorCodes.QueryCanceled));
             Assert.That(exception.CancellationToken, Is.EqualTo(cancellationSource.Token));
@@ -2353,7 +2356,7 @@ LANGUAGE plpgsql VOLATILE";
         Assert.That(processId, Is.EqualTo(conn.ProcessID));
 
         // Send no response from server, wait for the cancellation attempt to time out
-        var exception = Assert.ThrowsAsync<OperationCanceledException>(async () => await task)!;
+        var exception = (await Assert.ThrowsAsync<OperationCanceledException>(async () => await task))!;
         Assert.That(exception.InnerException, Is.TypeOf<TimeoutException>());
         Assert.That(exception.CancellationToken, Is.EqualTo(cancellationSource.Token));
 
@@ -2395,7 +2398,7 @@ LANGUAGE plpgsql VOLATILE";
         Assert.That(processId, Is.EqualTo(conn.ProcessID));
 
         // Send no response from server, wait for the cancellation attempt to time out
-        var exception = Assert.ThrowsAsync<OperationCanceledException>(async () => await task)!;
+        var exception = (await Assert.ThrowsAsync<OperationCanceledException>(async () => await task))!;
         Assert.That(exception.InnerException, Is.TypeOf<TimeoutException>());
         Assert.That(exception.CancellationToken, Is.EqualTo(cancellationSource.Token));
 
@@ -2431,7 +2434,7 @@ LANGUAGE plpgsql VOLATILE";
         var task = reader.GetFieldValueAsync<byte[]>(0, cts.Token);
         cts.Cancel();
 
-        var exception = Assert.ThrowsAsync<OperationCanceledException>(async () => await task)!;
+        var exception = (await Assert.ThrowsAsync<OperationCanceledException>(async () => await task))!;
         Assert.That(exception.InnerException, Is.Null);
 
         Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
@@ -2466,7 +2469,7 @@ LANGUAGE plpgsql VOLATILE";
         var task = reader.IsDBNullAsync(1, cts.Token);
         cts.Cancel();
 
-        var exception = Assert.ThrowsAsync<OperationCanceledException>(async () => await task)!;
+        var exception = (await Assert.ThrowsAsync<OperationCanceledException>(async () => await task))!;
         Assert.That(exception.InnerException, Is.Null);
 
         Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
@@ -2507,7 +2510,7 @@ LANGUAGE plpgsql VOLATILE";
 
         var task = reader.GetFieldValueAsync<byte[]>(0);
 
-        var exception = Assert.ThrowsAsync<NpgsqlException>(async () => await task)!;
+        var exception = (await Assert.ThrowsAsync<NpgsqlException>(async () => await task))!;
         Assert.That(exception.InnerException, Is.TypeOf<TimeoutException>());
 
         Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
@@ -2544,7 +2547,7 @@ LANGUAGE plpgsql VOLATILE";
 
         var task = reader.GetFieldValueAsync<byte[]>(0);
 
-        var exception = Assert.ThrowsAsync<NpgsqlException>(async () => await task)!;
+        var exception = (await Assert.ThrowsAsync<NpgsqlException>(async () => await task))!;
         Assert.That(exception.InnerException, Is.TypeOf<TimeoutException>());
 
         Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
@@ -2608,7 +2611,7 @@ LANGUAGE plpgsql VOLATILE";
             await reader.ReadAsync();
             // The second read will try to consume the whole resultset due to CommandBehavior.SingleRow
             // Which will fail with timeout (and immediate connection break) since we didn't send anything else beside the first row
-            var ex = Assert.ThrowsAsync<NpgsqlException>(async () => await reader.ReadAsync())!;
+            var ex = (await Assert.ThrowsAsync<NpgsqlException>(async () => await reader.ReadAsync()))!;
             Assert.That(ex.InnerException, Is.TypeOf<TimeoutException>());
 
             Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));
@@ -2645,7 +2648,7 @@ sealed class ExplodingTypeHandlerResolverFactory(bool safe) : PgTypeInfoResolver
         public PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
         {
             if (dataTypeName == DataTypeNames.Int4 && (type == typeof(int) || type is null))
-                return new PgConcreteTypeInfo(options, new ExplodingTypeHandler(safe), DataTypeNames.Int4);
+                return PgConcreteTypeInfo.Create(options, new ExplodingTypeHandler(safe), DataTypeNames.Int4);
 
             return null;
         }
@@ -2666,12 +2669,10 @@ sealed class CustomStreamResolverFactory : PgTypeInfoResolverFactory
         // a Stream query.
         public PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
             => type == typeof(CustomStream) && dataTypeName == DataTypeNames.Bytea
-                ? new PgConcreteTypeInfo(options, new CustomStreamConverter(), DataTypeNames.Bytea, requestedType: typeof(CustomStream))
-                {
+                ? PgConcreteTypeInfo.Create(options, new CustomStreamConverter(), DataTypeNames.Bytea, requestedType: typeof(CustomStream),
                     // Under-reporting: converter produces Stream values that are actually CustomStream instances.
-                    SupportsReading = true,
-                    SupportsWriting = false,
-                }
+                    supportsReading: true,
+                    supportsWriting: false)
                 : null;
     }
 }
@@ -2710,11 +2711,8 @@ class ExplodingTypeHandler : PgBufferedConverter<int>
     protected override Size BindValue(in BindContext context, int value, ref object? writeState)
         => throw new NotSupportedException();
 
-    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
-    {
-        bufferRequirements = BufferRequirements.Value;
-        return format is DataFormat.Binary;
-    }
+    public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
+        => ConverterDescriptor.Invariant with { BufferRequirements = BufferRequirements.Value };
 
     public override void Write(PgWriter writer, int value)
         => throw new NotSupportedException();

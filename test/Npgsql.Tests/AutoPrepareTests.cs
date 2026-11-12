@@ -430,7 +430,7 @@ AND statement NOT LIKE '%pg_type%'
         {
             await command.ExecuteNonQueryAsync();
             await conn.ExecuteNonQueryAsync($"DROP TABLE {tableName}");
-            Assert.ThrowsAsync<PostgresException>(async () => await command.ExecuteNonQueryAsync());
+            await Assert.ThrowsAsync<PostgresException>(async () => await command.ExecuteNonQueryAsync());
         }
 
         await conn.ExecuteNonQueryAsync($"CREATE TABLE {tableName} (id integer)");
@@ -505,7 +505,7 @@ LANGUAGE 'plpgsql';
         // We expect error 12345. Prior to the error being raised, the SELECT pg_temp.emit_exception will be successfully prepared
         // and the previous _auto1 (SELECT 1) will be successfully closed. However, the subsequent SELECT 4 will not be prepared,
         // and the previous _auto2 (SELECT 2) will not be properly closed. SELECT 4 will then be unprepared.
-        var ex = Assert.ThrowsAsync<PostgresException>(async () => await conn.ExecuteNonQueryAsync($"SELECT {funcName}(); SELECT 4"))!;
+        var ex = (await Assert.ThrowsAsync<PostgresException>(async () => await conn.ExecuteNonQueryAsync($"SELECT {funcName}(); SELECT 4")))!;
         Assert.That(ex, Is.TypeOf<PostgresException>().With.Property(nameof(PostgresException.SqlState)).EqualTo("12345"));
 
         // The PreparedStatementManager prioritises replacement of unprepared statements, so we know this will replace SELECT 4 in
@@ -613,11 +613,11 @@ LANGUAGE 'plpgsql';
         await connection.ExecuteNonQueryAsync($"ALTER TABLE {table} RENAME COLUMN foo TO bar");
 
         // Since we've changed the table schema, the next execution of the prepared statement will error with 0A000
-        var exception = Assert.ThrowsAsync<PostgresException>(() => command.ExecuteNonQueryAsync())!;
+        var exception = (await Assert.ThrowsAsync<PostgresException>(() => command.ExecuteNonQueryAsync()))!;
         Assert.That(exception.SqlState, Is.EqualTo(PostgresErrorCodes.FeatureNotSupported)); // cached plan must not change result type
 
         // However, Npgsql should invalidate the prepared statement in this case, so the next execution should work
-        Assert.DoesNotThrowAsync(() => command.ExecuteNonQueryAsync());
+        await Assert.DoesNotThrowAsync(() => command.ExecuteNonQueryAsync());
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/6432")]

@@ -5,15 +5,12 @@ using System.Threading.Tasks;
 
 namespace Npgsql.Internal.Converters;
 
+#pragma warning disable CS9113 // supportsTextFormat is no longer consulted by the converter — format registration is handled externally. Parameter retained for caller-source stability pending registration cleanup.
 sealed class StreamConverter(bool supportsTextFormat) : PgStreamingConverter<Stream>
+#pragma warning restore CS9113
 {
-    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
-    {
-        bufferRequirements = BufferRequirements.Streaming;
-        return supportsTextFormat
-            ? format is DataFormat.Text or DataFormat.Binary
-            : format is DataFormat.Binary;
-    }
+    public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
+        => ConverterDescriptor.Invariant with { BufferRequirements = BufferRequirements.Streaming };
 
     public override Stream Read(PgReader reader)
         => reader.GetStream();

@@ -91,6 +91,9 @@ public sealed class NpgsqlBinaryExporter : ICancelable
                 }
                 break;
             case BackendMessageCode.CommandComplete:
+                // The command completed without copying through the client (e.g. COPY to or from a file on the server).
+                // Consume the ReadyForQuery that follows, so that the connection stays usable.
+                Expect<ReadyForQueryMessage>(await _connector.ReadMessage(async).ConfigureAwait(false), _connector);
                 throw new InvalidOperationException(
                     "This API only supports import/export from the client, i.e. COPY commands containing TO/FROM STDIN. " +
                     "To import/export with files on your PostgreSQL machine, simply execute the command with ExecuteNonQuery. " +
@@ -346,9 +349,12 @@ public sealed class NpgsqlBinaryExporter : ICancelable
             var typeInfo = options.GetTypeInfoInternal(type, pgTypeId)
                            ?? throw new NotSupportedException($"Reading is not supported for type '{type}'{(npgsqlDbType is null ? "" : $" and NpgsqlDbType '{npgsqlDbType}'")}");
 
-            // Binary export has no type info so we only do caller-directed interpretation of data.
-            var concreteTypeInfo = typeInfo.MakeConcreteForField(
-                Field.CreateUnspecified(typeInfo.PgTypeId ?? ((PgProviderTypeInfo)typeInfo).GetDefault(null).PgTypeId));
+            // Binary export has no type info so we only do caller-directed interpretation of data. An undecided
+            // provider info (caller didn't supply an NpgsqlDbType for a polymorphic CLR type) has no id for
+            // GetForField to dispatch on; resolve straight to the provider's default.
+            var concreteTypeInfo = typeInfo is PgProviderTypeInfo { PgTypeId: null } undecided
+                ? undecided.GetDefault(null)
+                : typeInfo.MakeConcreteForField();
             if (!concreteTypeInfo.SupportsReading)
                 AdoSerializerHelpers.ThrowReadingNotSupported(type, options, concreteTypeInfo.PgTypeId, resolved: true);
             return new(concreteTypeInfo, concreteTypeInfo.BindField(DataFormat.Binary));

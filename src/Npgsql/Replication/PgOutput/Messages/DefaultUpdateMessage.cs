@@ -7,7 +7,9 @@ using NpgsqlTypes;
 namespace Npgsql.Replication.PgOutput.Messages;
 
 /// <summary>
-/// Logical Replication Protocol update message for tables with REPLICA IDENTITY set to DEFAULT.
+/// Logical Replication Protocol update message that only contains the new row. PostgreSQL sends it for tables with
+/// REPLICA IDENTITY set to DEFAULT or USING INDEX if the update didn't change any of the replica identity columns and
+/// none of them is stored externally (TOASTed).
 /// </summary>
 public class DefaultUpdateMessage : UpdateMessage
 {

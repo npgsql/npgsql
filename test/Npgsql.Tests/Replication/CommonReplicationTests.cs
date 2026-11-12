@@ -479,6 +479,61 @@ public class CommonReplicationTests<TConnection> : SafeReplicationTestBase<TConn
                 });
             });
 
+    [Test]
+    [NonParallelizable]
+    public Task SendStatusUpdate_racing_replication_teardown_throws_InvalidOperationException()
+        => SafeReplicationTest(
+            async (slotName, _) =>
+            {
+                await using var rc = await OpenReplicationConnectionAsync();
+                var info = await rc.IdentifySystem();
+                await CreateReplicationSlot(slotName);
+
+                for (var round = 0; round < 10; round++)
+                {
+                    using var streamingCts = new CancellationTokenSource();
+                    await using var enumerator = StartReplication(rc, slotName, info.XLogPos, streamingCts.Token).GetAsyncEnumerator();
+                    var pendingRead = enumerator.MoveNextAsync();
+
+                    var statusUpdates = Task.Run(async () =>
+                    {
+                        // Replication starts lazily on the first MoveNextAsync; retry until the stream is up.
+                        while (true)
+                        {
+                            try
+                            {
+                                await rc.SendStatusUpdate(CancellationToken.None);
+                                break;
+                            }
+                            catch (InvalidOperationException) when (!streamingCts.IsCancellationRequested)
+                            {
+                            }
+                        }
+
+                        while (true)
+                            await rc.SendStatusUpdate(CancellationToken.None);
+                    });
+
+                    // Give the status update loop a moment to get going before tearing down the stream.
+                    await Task.Delay(50);
+                    streamingCts.Cancel();
+
+                    try
+                    {
+                        while (await pendingRead)
+                            pendingRead = enumerator.MoveNextAsync();
+                    }
+                    catch (OperationCanceledException)
+                    {
+                    }
+
+                    // Once replication has terminated, the loop must end with the documented
+                    // InvalidOperationException ("can only be sent during replication"); anything else
+                    // (in particular NullReferenceException from the feedback timer race) is a bug.
+                    Assert.That(async () => await statusUpdates, Throws.InvalidOperationException);
+                }
+            });
+
     #endregion
 
     async Task CreateReplicationSlot(string slotName)

@@ -46,6 +46,8 @@ sealed class NpgsqlWriteBuffer : IDisposable
             if (_timeoutCts.Timeout != value)
             {
                 Debug.Assert(_underlyingSocket != null);
+                // Timeout should never be between 0 and 1 milliseconds because casting it to int will make it infinite
+                Debug.Assert(value.TotalMilliseconds is <= 0 or >= 1);
 
                 if (value > TimeSpan.Zero)
                 {
@@ -73,7 +75,7 @@ sealed class NpgsqlWriteBuffer : IDisposable
 
     // (Re)init to make sure we'll refetch from the write buffer.
     internal PgWriter GetWriter(NpgsqlDatabaseInfo typeCatalog, FlushMode flushMode = FlushMode.None)
-        => _pgWriter.Init(typeCatalog, flushMode);
+        => _pgWriter.Init(typeCatalog, Connector?.SerializerOptions.ConversionContext ?? PgConversionContext.Empty, flushMode);
 
     internal readonly byte[] Buffer;
     readonly Encoder _textEncoder;
@@ -277,7 +279,6 @@ sealed class NpgsqlWriteBuffer : IDisposable
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void WriteByte(byte value)
     {
-        CheckBounds<byte>();
         Buffer[WritePosition] = value;
         WritePosition += sizeof(byte);
     }
@@ -285,48 +286,48 @@ sealed class NpgsqlWriteBuffer : IDisposable
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void WriteInt16(short value)
     {
-        CheckBounds<short>();
-        Unsafe.WriteUnaligned(ref Buffer[WritePosition], BitConverter.IsLittleEndian ? BinaryPrimitives.ReverseEndianness(value) : value);
+        BinaryPrimitives.WriteInt16BigEndian(GetWriteSpan(sizeof(short)), value);
         WritePosition += sizeof(short);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void WriteUInt16(ushort value)
     {
-        CheckBounds<ushort>();
-        Unsafe.WriteUnaligned(ref Buffer[WritePosition], BitConverter.IsLittleEndian ? BinaryPrimitives.ReverseEndianness(value) : value);
+        BinaryPrimitives.WriteUInt16BigEndian(GetWriteSpan(sizeof(ushort)), value);
         WritePosition += sizeof(ushort);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void WriteInt32(int value)
     {
-        CheckBounds<int>();
-        Unsafe.WriteUnaligned(ref Buffer[WritePosition], BitConverter.IsLittleEndian ? BinaryPrimitives.ReverseEndianness(value) : value);
+        BinaryPrimitives.WriteInt32BigEndian(GetWriteSpan(sizeof(int)), value);
         WritePosition += sizeof(int);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void WriteUInt32(uint value)
     {
-        CheckBounds<uint>();
-        Unsafe.WriteUnaligned(ref Buffer[WritePosition], BitConverter.IsLittleEndian ? BinaryPrimitives.ReverseEndianness(value) : value);
+        BinaryPrimitives.WriteUInt32BigEndian(GetWriteSpan(sizeof(uint)), value);
         WritePosition += sizeof(uint);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void WriteInt64(long value)
     {
-        CheckBounds<long>();
-        Unsafe.WriteUnaligned(ref Buffer[WritePosition], BitConverter.IsLittleEndian ? BinaryPrimitives.ReverseEndianness(value) : value);
+        BinaryPrimitives.WriteInt64BigEndian(GetWriteSpan(sizeof(long)), value);
         WritePosition += sizeof(long);
     }
 
-    [Conditional("DEBUG")]
-    unsafe void CheckBounds<T>() where T : unmanaged
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    Span<byte> GetWriteSpan(int byteCount)
     {
-        if (sizeof(T) > WriteSpaceLeft)
+        var buffer = Buffer;
+        var position = WritePosition;
+        if ((ulong)(uint)position + (uint)byteCount > (uint)buffer.Length)
             ThrowNotSpaceLeft();
+
+        // The guard above lets the JIT eliminate AsSpan's duplicate bounds check.
+        return buffer.AsSpan(position, byteCount);
     }
 
     static void ThrowNotSpaceLeft()

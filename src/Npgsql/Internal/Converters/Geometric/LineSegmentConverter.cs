@@ -5,11 +5,8 @@ namespace Npgsql.Internal.Converters;
 
 sealed class LineSegmentConverter : PgBufferedConverter<NpgsqlLSeg>
 {
-    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
-    {
-        bufferRequirements = BufferRequirements.CreateFixedSize(sizeof(double) * 4);
-        return format is DataFormat.Binary;
-    }
+    public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
+        => ConverterDescriptor.Invariant with { BufferRequirements = BufferRequirements.CreateFixedSize(sizeof(double) * 4) };
 
     public override NpgsqlLSeg Read(PgReader reader)
         => new(reader.ReadDouble(), reader.ReadDouble(), reader.ReadDouble(), reader.ReadDouble());

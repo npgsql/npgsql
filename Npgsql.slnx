@@ -15,7 +15,6 @@
   </Folder>
   <Folder Name="/src/">
     <File Path="src/Directory.Build.props" />
-    <Project Path="src/Npgsql.DependencyInjection/Npgsql.DependencyInjection.csproj" />
     <Project Path="src/Npgsql.GeoJSON/Npgsql.GeoJSON.csproj" />
     <Project Path="src/Npgsql.Json.NET/Npgsql.Json.NET.csproj" />
     <Project Path="src/Npgsql.NetTopologySuite/Npgsql.NetTopologySuite.csproj" />
@@ -27,9 +26,7 @@
   <Folder Name="/test/">
     <File Path="test/Directory.Build.props" />
     <Project Path="test/Npgsql.Benchmarks/Npgsql.Benchmarks.csproj" />
-    <Project Path="test/Npgsql.DependencyInjection.Tests/Npgsql.DependencyInjection.Tests.csproj" />
     <Project Path="test/Npgsql.NativeAotTests/Npgsql.NativeAotTests.csproj" />
-    <Project Path="test/Npgsql.PluginTests/Npgsql.PluginTests.csproj" />
     <Project Path="test/Npgsql.Specification.Tests/Npgsql.Specification.Tests.csproj" />
     <Project Path="test/Npgsql.Tests/Npgsql.Tests.csproj" />
   </Folder>

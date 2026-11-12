@@ -37,7 +37,7 @@ public static class TestDecodingConnectionExtensions
     /// initialization. <see cref="LogicalSlotSnapshotInitMode.Export"/>, which is also the default, will export the
     /// snapshot for use in other sessions. This option can't be used inside a transaction.
     /// <see cref="LogicalSlotSnapshotInitMode.Use"/> will use the snapshot for the current transaction executing the
-    /// command. This option must be used in a transaction, and <see cref="LogicalSlotSnapshotInitMode.Use"/> must be the
+    /// command. This option must be used in a transaction, and CREATE_REPLICATION_SLOT must be the
     /// first command run in that transaction. Finally, <see cref="LogicalSlotSnapshotInitMode.NoExport"/> will just use
     /// the snapshot for logical decoding as normal but won't do anything else with it.
     /// </param>
@@ -60,8 +60,6 @@ public static class TestDecodingConnectionExtensions
         bool twoPhase = false,
         CancellationToken cancellationToken = default)
     {
-        // We don't enter NoSynchronizationContextScope here since we (have to) do it in CreateReplicationSlotForPlugin, because
-        // otherwise it wouldn't be set for external plugins.
         var options = await connection.CreateLogicalReplicationSlot(
             slotName, "test_decoding", temporarySlot, slotSnapshotInitMode, twoPhase, cancellationToken).ConfigureAwait(false);
         return new TestDecodingReplicationSlot(options);
@@ -80,8 +78,8 @@ public static class TestDecodingConnectionExtensions
     /// <param name="cancellationToken">The token to monitor for stopping the replication.</param>
     /// <param name="options">The collection of options passed to the slot's logical decoding plugin.</param>
     /// <param name="walLocation">The WAL location to begin streaming at.</param>
-    /// <returns>A <see cref="Task{T}"/> representing an <see cref="IAsyncEnumerable{T}"/> that
-    /// can be used to stream WAL entries in form of <see cref="TestDecodingData"/> instances.</returns>
+    /// <returns>An <see cref="IAsyncEnumerable{T}"/> that can be used to stream WAL entries in form of
+    /// <see cref="TestDecodingData"/> instances.</returns>
     public static IAsyncEnumerable<TestDecodingData> StartReplication(
         this LogicalReplicationConnection connection,
         TestDecodingReplicationSlot slot,

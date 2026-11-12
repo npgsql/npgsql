@@ -97,7 +97,7 @@ public class PhysicalReplicationTests : SafeReplicationTestBase<PhysicalReplicat
                 Assert.That(message.Data.Length, Is.GreaterThan(0));
 
                 streamingCts.Cancel();
-                var exception = Assert.ThrowsAsync(Is.AssignableTo<OperationCanceledException>(), async () => await messages.MoveNextAsync());
+                var exception = await Assert.ThrowsAsync(Is.AssignableTo<OperationCanceledException>(), async () => await messages.MoveNextAsync());
                 if (c.PostgreSqlVersion < Version.Parse("9.4"))
                 {
                     Assert.That(exception, Has.InnerException.InstanceOf<PostgresException>()
@@ -135,7 +135,7 @@ public class PhysicalReplicationTests : SafeReplicationTestBase<PhysicalReplicat
             Assert.That(message.Data.Length, Is.GreaterThan(0));
 
             streamingCts.Cancel();
-            var exception = Assert.ThrowsAsync(Is.AssignableTo<OperationCanceledException>(), async () => await messages.MoveNextAsync());
+            var exception = await Assert.ThrowsAsync(Is.AssignableTo<OperationCanceledException>(), async () => await messages.MoveNextAsync());
             if (c.PostgreSqlVersion < Version.Parse("9.4"))
             {
                 Assert.That(exception, Has.InnerException.InstanceOf<PostgresException>()

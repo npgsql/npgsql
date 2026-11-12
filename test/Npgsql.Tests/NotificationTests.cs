@@ -161,13 +161,13 @@ public class NotificationTests : TestBase
     }
 
     [Test]
-    public void WaitAsync_cancellation()
+    public async Task WaitAsync_cancellation()
     {
         var notify = GetUniqueIdentifier(nameof(NotificationTests));
 
         using (var conn = OpenConnection())
         {
-            Assert.ThrowsAsync<OperationCanceledException>(async () => await conn.WaitAsync(new CancellationToken(true)));
+            await Assert.ThrowsAsync<OperationCanceledException>(async () => await conn.WaitAsync(new CancellationToken(true)));
             Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
         }
 
@@ -175,7 +175,7 @@ public class NotificationTests : TestBase
         {
             conn.ExecuteNonQuery($"LISTEN {notify}");
             var cts = new CancellationTokenSource(1000);
-            Assert.ThrowsAsync<OperationCanceledException>(async () => await conn.WaitAsync(cts.Token));
+            await Assert.ThrowsAsync<OperationCanceledException>(async () => await conn.WaitAsync(cts.Token));
             Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
         }
     }
@@ -197,17 +197,17 @@ public class NotificationTests : TestBase
     }
 
     [Test]
-    public void WaitAsync_breaks_connection()
+    public async Task WaitAsync_breaks_connection()
     {
         using var dataSource = CreateDataSource();
         using var conn = dataSource.OpenConnection();
-        Task.Delay(1000).ContinueWith(t =>
+        _ = Task.Delay(1000).ContinueWith(t =>
         {
             using var conn2 = OpenConnection();
             conn2.ExecuteNonQuery($"SELECT pg_terminate_backend({conn.ProcessID})");
         });
 
-        var pgEx = Assert.ThrowsAsync<PostgresException>(async () => await conn.WaitAsync())!;
+        var pgEx = (await Assert.ThrowsAsync<PostgresException>(async () => await conn.WaitAsync()))!;
         Assert.That(pgEx.SqlState, Is.EqualTo(PostgresErrorCodes.AdminShutdown));
         Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
     }

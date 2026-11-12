@@ -8,7 +8,7 @@ using NpgsqlTypes;
 // ReSharper disable once CheckNamespace
 namespace Npgsql.Internal.Converters;
 
-sealed class TsVectorConverter(Encoding encoding) : PgStreamingConverter<NpgsqlTsVector>
+sealed class TsVectorConverter : PgStreamingConverter<NpgsqlTsVector>
 {
     public override NpgsqlTsVector Read(PgReader reader)
         => Read(async: false, reader, CancellationToken.None).GetAwaiter().GetResult();
@@ -18,6 +18,7 @@ sealed class TsVectorConverter(Encoding encoding) : PgStreamingConverter<NpgsqlT
 
     async ValueTask<NpgsqlTsVector> Read(bool async, PgReader reader, CancellationToken cancellationToken)
     {
+        var encoding = reader.ConversionContext.TextEncoding;
         if (reader.ShouldBuffer(sizeof(int)))
             await reader.Buffer(async, sizeof(int), cancellationToken).ConfigureAwait(false);
 
@@ -63,6 +64,7 @@ sealed class TsVectorConverter(Encoding encoding) : PgStreamingConverter<NpgsqlT
 
     protected override Size BindValue(in BindContext context, NpgsqlTsVector value, ref object? writeState)
     {
+        var encoding = context.ConversionContext.TextEncoding;
         var size = 4;
         foreach (var l in value)
             size += encoding.GetByteCount(l.Text) + 1 + 2 + l.Count * 2;
@@ -78,6 +80,7 @@ sealed class TsVectorConverter(Encoding encoding) : PgStreamingConverter<NpgsqlT
 
     async ValueTask Write(bool async, PgWriter writer, NpgsqlTsVector value, CancellationToken cancellationToken)
     {
+        var encoding = writer.ConversionContext.TextEncoding;
         if (writer.ShouldFlush(sizeof(int)))
             await writer.FlushAsync(cancellationToken).ConfigureAwait(false);
         writer.WriteInt32(value.Count);

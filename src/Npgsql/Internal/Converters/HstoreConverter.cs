@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace Npgsql.Internal.Converters;
 
-sealed class HstoreConverter<T>(Encoding encoding, Func<ICollection<KeyValuePair<string, string?>>, T>? convert = null)
+sealed class HstoreConverter<T>(Func<ICollection<KeyValuePair<string, string?>>, T>? convert = null)
     : PgStreamingConverter<T>
     where T : ICollection<KeyValuePair<string, string?>>
 {
@@ -19,6 +19,7 @@ sealed class HstoreConverter<T>(Encoding encoding, Func<ICollection<KeyValuePair
 
     protected override Size BindValue(in BindContext context, T value, ref object? writeState)
     {
+        var encoding = context.ConversionContext.TextEncoding;
         // Number of lengths (count, key length, value length).
         var totalSize = sizeof(int) + value.Count * (sizeof(int) + sizeof(int));
         if (value.Count is 0)
@@ -61,6 +62,7 @@ sealed class HstoreConverter<T>(Encoding encoding, Func<ICollection<KeyValuePair
 
     async ValueTask<T> Read(bool async, PgReader reader, CancellationToken cancellationToken)
     {
+        var encoding = reader.ConversionContext.TextEncoding;
         if (reader.ShouldBuffer(sizeof(int)))
             await reader.Buffer(async, sizeof(int), cancellationToken).ConfigureAwait(false);
 
@@ -101,6 +103,7 @@ sealed class HstoreConverter<T>(Encoding encoding, Func<ICollection<KeyValuePair
 
     async ValueTask Write(bool async, PgWriter writer, T value, CancellationToken cancellationToken)
     {
+        var encoding = writer.ConversionContext.TextEncoding;
         if (writer.Current.WriteState is not HstoreWriteState && value.Count is not 0)
             throw new InvalidCastException($"Invalid write state, expected {typeof(HstoreWriteState).FullName}.");
 

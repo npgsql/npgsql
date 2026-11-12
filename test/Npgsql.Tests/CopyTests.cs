@@ -960,7 +960,7 @@ INSERT INTO {table} (bits, bitvector, bitarray) VALUES (B'00000001101', B'000000
             var buffer = new byte[32];
             await stream.ReadExactlyAsync(buffer, 0, buffer.Length);
             stream.Cancel();
-            Assert.DoesNotThrowAsync(async () => await stream.DisposeAsync());
+            await Assert.DoesNotThrowAsync(async () => await stream.DisposeAsync());
         }
         Assert.That(async () => await conn.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1), "The connection is still OK");
     }
@@ -976,7 +976,7 @@ INSERT INTO {table} (bits, bitvector, bitarray) VALUES (B'00000001101', B'000000
             await exporter.StartRowAsync();
             await exporter.ReadAsync<string>();
             exporter.Cancel();
-            Assert.DoesNotThrowAsync(async () => await exporter.DisposeAsync());
+            await Assert.DoesNotThrowAsync(async () => await exporter.DisposeAsync());
         }
         Assert.That(async () => await conn.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1), "The connection is still OK");
     }
@@ -1326,7 +1326,7 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 1)");
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/5209")]
-    [Platform(Exclude = "MacOsX", Reason = "Write might not throw an exception")]
+    [Platform(Exclude = PlatformNames.MacOSX, Reason = "Write might not throw an exception")]
     public async Task RawBinaryCopy_write_nre([Values] bool async)
     {
         await using var postmasterMock = PgPostmasterMock.Start(ConnectionString);
@@ -1342,10 +1342,49 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 1)");
         server.Close();
         var value = Encoding.UTF8.GetBytes(new string('a', conn.Settings.WriteBufferSize * 2));
         if (async)
-            Assert.ThrowsAsync<NpgsqlException>(async () => await stream.WriteAsync(value));
+            await Assert.ThrowsAsync<NpgsqlException>(async () => await stream.WriteAsync(value));
         else
             Assert.Throws<NpgsqlException>(() => stream.Write(value));
         Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
+    }
+
+    [Test, Description("A COPY to or from a file on the server completes without copying through the client")]
+    public async Task Copy_api_with_command_that_completes_without_copying(
+        [Values("BinaryExport", "BinaryImport", "RawBinaryCopy")] string api)
+    {
+        await using var postmasterMock = PgPostmasterMock.Start(ConnectionString);
+        await using var dataSource = CreateDataSource(postmasterMock.ConnectionString);
+        await using var conn = await dataSource.OpenConnectionAsync();
+        var server = await postmasterMock.WaitForServerConnection();
+
+        const string command = "COPY SomeTable TO '/some/file' (FORMAT BINARY)";
+        await server
+            .WriteCommandComplete("COPY 1")
+            .WriteReadyForQuery()
+            .FlushAsync();
+
+        Assert.That(async () =>
+        {
+            switch (api)
+            {
+            case "BinaryExport":
+                await using (await conn.BeginBinaryExportAsync(command)) { }
+                break;
+            case "BinaryImport":
+                await using (await conn.BeginBinaryImportAsync(command)) { }
+                break;
+            default:
+                await using (await conn.BeginRawBinaryCopyAsync(command)) { }
+                break;
+            }
+        }, Throws.InvalidOperationException);
+        await server.ExpectSimpleQuery(command).WaitAsync(TimeSpan.FromSeconds(10));
+
+        // The connection is still in sync
+        var queryTask = conn.ExecuteScalarAsync("SELECT 1");
+        await server.ExpectExtendedQuery().WaitAsync(TimeSpan.FromSeconds(10));
+        await server.WriteScalarResponseAndFlush(1);
+        Assert.That(await queryTask, Is.EqualTo(1));
     }
 
     #endregion

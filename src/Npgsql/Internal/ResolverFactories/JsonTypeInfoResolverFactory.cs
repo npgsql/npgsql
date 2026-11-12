@@ -44,19 +44,19 @@ sealed class JsonTypeInfoResolverFactory(JsonSerializerOptions? serializerOption
                 var jsonb = dataTypeName == DataTypeNames.Jsonb;
                 mappings.AddType<JsonDocument>(dataTypeName, (options, mapping, _) =>
                         mapping.CreateInfo(options,
-                            new JsonConverter<JsonDocument, JsonDocument>(jsonb, options.TextEncoding, serializerOptions)));
+                            new JsonConverter<JsonDocument, JsonDocument>(jsonb, serializerOptions)));
                 mappings.AddStructType<JsonElement>(dataTypeName, (options, mapping, _) =>
                     mapping.CreateInfo(options,
-                        new JsonConverter<JsonElement, JsonElement>(jsonb, options.TextEncoding, serializerOptions)));
+                        new JsonConverter<JsonElement, JsonElement>(jsonb, serializerOptions)));
 
                 mappings.AddType<JsonNode>(dataTypeName, (options, mapping, _) =>
-                    mapping.CreateInfo(options, new JsonConverter<JsonNode, JsonNode>(jsonb, options.TextEncoding, serializerOptions)));
+                    mapping.CreateInfo(options, new JsonConverter<JsonNode, JsonNode>(jsonb, serializerOptions)));
                 mappings.AddType<JsonObject>(dataTypeName, (options, mapping, _) =>
-                    mapping.CreateInfo(options, new JsonConverter<JsonObject, JsonObject>(jsonb, options.TextEncoding, serializerOptions)));
+                    mapping.CreateInfo(options, new JsonConverter<JsonObject, JsonObject>(jsonb, serializerOptions)));
                 mappings.AddType<JsonArray>(dataTypeName, (options, mapping, _) =>
-                    mapping.CreateInfo(options, new JsonConverter<JsonArray, JsonArray>(jsonb, options.TextEncoding, serializerOptions)));
+                    mapping.CreateInfo(options, new JsonConverter<JsonArray, JsonArray>(jsonb, serializerOptions)));
                 mappings.AddType<JsonValue>(dataTypeName, (options, mapping, _) =>
-                    mapping.CreateInfo(options, new JsonConverter<JsonValue, JsonValue>(jsonb, options.TextEncoding, serializerOptions)));
+                    mapping.CreateInfo(options, new JsonConverter<JsonValue, JsonValue>(jsonb, serializerOptions)));
             }
 
             return mappings;

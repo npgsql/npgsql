@@ -10,7 +10,7 @@ namespace Microsoft.Extensions.DependencyInjection;
 /// <summary>
 /// Extension method for setting up Npgsql services in an <see cref="IServiceCollection" />.
 /// </summary>
-public static partial class NpgsqlServiceCollectionExtensions
+public static class NpgsqlServiceCollectionExtensions
 {
     /// <summary>
     /// Registers an <see cref="NpgsqlDataSource" /> and an <see cref="NpgsqlConnection" /> in the <see cref="IServiceCollection" />.

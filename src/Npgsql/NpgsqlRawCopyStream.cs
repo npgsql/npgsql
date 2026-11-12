@@ -111,6 +111,9 @@ public sealed class NpgsqlRawCopyStream : Stream, ICancelable
                 TraceSetExport();
                 break;
             case BackendMessageCode.CommandComplete:
+                // The command completed without copying through the client (e.g. COPY to or from a file on the server).
+                // Consume the ReadyForQuery that follows, so that the connection stays usable.
+                Expect<ReadyForQueryMessage>(await _connector.ReadMessage(async).ConfigureAwait(false), _connector);
                 throw new InvalidOperationException(
                     "This API only supports import/export from the client, i.e. COPY commands containing TO/FROM STDIN. " +
                     "To import/export with files on your PostgreSQL machine, simply execute the command with ExecuteNonQuery. " +

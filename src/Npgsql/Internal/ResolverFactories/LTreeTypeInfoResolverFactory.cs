@@ -30,16 +30,28 @@ sealed class LTreeTypeInfoResolverFactory : PgTypeInfoResolverFactory
         static TypeInfoMappingCollection AddMappings(TypeInfoMappingCollection mappings)
         {
             mappings.AddType<string>("ltree",
-                static (options, mapping, _) => mapping.CreateInfo(options,
-                    new VersionPrefixedTextConverter<string>(LTreeVersion, TextConverter.CreateStringConverter(options.TextEncoding))),
+                static (options, mapping, _) =>
+                {
+                    var text = TextConverter.CreateStringConverter();
+                    var binary = new VersionPrefixedTextConverter<string>(LTreeVersion, text);
+                    return mapping.CreateInfo(options, binary: binary, text: text);
+                },
                 MatchRequirement.DataTypeName);
             mappings.AddType<string>("lquery",
-                static (options, mapping, _) => mapping.CreateInfo(options,
-                    new VersionPrefixedTextConverter<string>(LTreeVersion, TextConverter.CreateStringConverter(options.TextEncoding))),
+                static (options, mapping, _) =>
+                {
+                    var text = TextConverter.CreateStringConverter();
+                    var binary = new VersionPrefixedTextConverter<string>(LTreeVersion, text);
+                    return mapping.CreateInfo(options, binary: binary, text: text);
+                },
                 MatchRequirement.DataTypeName);
             mappings.AddType<string>("ltxtquery",
-                static (options, mapping, _) => mapping.CreateInfo(options,
-                    new VersionPrefixedTextConverter<string>(LTreeVersion, TextConverter.CreateStringConverter(options.TextEncoding))),
+                static (options, mapping, _) =>
+                {
+                    var text = TextConverter.CreateStringConverter();
+                    var binary = new VersionPrefixedTextConverter<string>(LTreeVersion, text);
+                    return mapping.CreateInfo(options, binary: binary, text: text);
+                },
                 MatchRequirement.DataTypeName);
 
             return mappings;

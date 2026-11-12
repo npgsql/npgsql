@@ -45,9 +45,11 @@ sealed class UnmappedTypeInfoResolverFactory : PgTypeInfoResolverFactory
                         labelToEnum[enumName] = enumValue;
                     }
 
-                    return mapping.CreateInfo(options, (PgConverter)Activator.CreateInstance(typeof(EnumConverter<>).MakeGenericType(mapping.Type),
-                        enumToLabel, labelToEnum,
-                        options.TextEncoding)!);
+                    // EnumConverter is format-agnostic — register the same instance for both binary and
+                    // text so historical text-format binding paths continue to work.
+                    var converter = (PgConverter)Activator.CreateInstance(typeof(EnumConverter<>).MakeGenericType(mapping.Type),
+                        enumToLabel, labelToEnum)!;
+                    return mapping.CreateInfo(options, converter, converter);
                 });
         }
     }
@@ -92,13 +94,14 @@ sealed class UnmappedTypeInfoResolverFactory : PgTypeInfoResolverFactory
 
             return CreateCollection().AddMapping(matchedType ?? converterType, dataTypeName,
                 (options, mapping, _) =>
-                    new PgConcreteTypeInfo(
+                    PgConcreteTypeInfo.Create(
                         options,
                         (PgConverter)Activator.CreateInstance(typeof(RangeConverter<>).MakeGenericType(subInfo.Type),
-                            ((PgConcreteTypeInfo)subInfo).Converter)!,
+                            ((PgConcreteTypeInfo)subInfo).GetConverter(DataFormat.Binary))!,
                         new DataTypeName(mapping.DataTypeName),
-                        requestedType: matchedType
-                    ) { PreferredFormat = subConcrete.PreferredFormat, SupportsWriting = subConcrete.SupportsWriting },
+                        requestedType: matchedType,
+                        preferredFormat: subConcrete.PreferredFormat,
+                        supportsWriting: subConcrete.SupportsWriting),
                 mapping => mapping with { MatchRequirement = MatchRequirement.DataTypeName });
         }
     }
@@ -152,13 +155,14 @@ sealed class UnmappedTypeInfoResolverFactory : PgTypeInfoResolverFactory
 
             return CreateCollection().AddMapping(type ?? converterType, dataTypeName,
                 (options, mapping, _) =>
-                    new PgConcreteTypeInfo(
+                    PgConcreteTypeInfo.Create(
                         options,
                         (PgConverter)Activator.CreateInstance(typeof(MultirangeConverter<,>).MakeGenericType(converterType, subInfo.Type),
-                            ((PgConcreteTypeInfo)subInfo).Converter)!,
+                            ((PgConcreteTypeInfo)subInfo).GetConverter(DataFormat.Binary))!,
                         new DataTypeName(mapping.DataTypeName),
-                        requestedType: type
-                    ) { PreferredFormat = subConcrete.PreferredFormat, SupportsWriting = subConcrete.SupportsWriting },
+                        requestedType: type,
+                        preferredFormat: subConcrete.PreferredFormat,
+                        supportsWriting: subConcrete.SupportsWriting),
                 mapping => mapping with { MatchRequirement = MatchRequirement.DataTypeName });
         }
     }

@@ -283,12 +283,13 @@ public abstract class TestBase
         // but for npgsql mapping we should use names without quotes - scheme.My.type.name
         var dataTypeNameWithoutFacetsAndQuotes = dataTypeNameWithoutFacets.Replace("\"", string.Empty);
 
-        // We test the following scenarios (between 2 and 5 in total):
+        // We test the following scenarios:
         // 1. With value and DataTypeName set
-        // 2. With value and NpgsqlDbType set (when available)
-        // 3. With value and DbType explicitly set
-        // 4. With only the value set
-        // 5. With only the value set, using generic NpgsqlParameter<T>
+        // 2. With value and DataTypeName set, using generic NpgsqlParameter<T>
+        // 3. With value and NpgsqlDbType set (when available)
+        // 4. With value and DbType explicitly set
+        // 5. With only the value set
+        // 6. With only the value set, using generic NpgsqlParameter<T>
 
         // We only actually attempt to write to the database with a set DataTypeName, NpgsqlDbType, or when data type inference is exact.
 
@@ -301,6 +302,12 @@ public abstract class TestBase
         // With data type name
         p = new NpgsqlParameter { Value = valueFactory(), DataTypeName = dataTypeNameWithoutFacetsAndQuotes };
         errorIdentifier[++errorIdentifierIndex] = $"Value and DataTypeName={dataTypeNameWithoutFacetsAndQuotes}";
+        DataTypeAsserts();
+        cmd.Parameters.Add(p);
+
+        // Exercise the generic writer even when the CLR type does not support type inference.
+        p = new NpgsqlParameter<T> { TypedValue = valueFactory(), DataTypeName = dataTypeNameWithoutFacetsAndQuotes };
+        errorIdentifier[++errorIdentifierIndex] = $"Value (generic) and DataTypeName={dataTypeNameWithoutFacetsAndQuotes}";
         DataTypeAsserts();
         cmd.Parameters.Add(p);
 
@@ -640,7 +647,7 @@ public abstract class TestBase
         if (dataTypeName is not null)
             cmd.Parameters[0].DataTypeName = dataTypeName;
 
-        return Assert.ThrowsAsync<TException>(() => cmd.ExecuteReaderAsync())!;
+        return (await Assert.ThrowsAsync<TException>(() => cmd.ExecuteReaderAsync()))!;
     }
 
     // For array quoting rules, see array_out in https://github.com/postgres/postgres/blob/master/src/backend/utils/adt/arrayfuncs.c

@@ -66,7 +66,9 @@ sealed class TupleEnumerator : IAsyncEnumerator<ReplicationValue>
                 len = _readBuffer.ReadInt32();
                 break;
             default:
-                throw new ArgumentOutOfRangeException();
+                // The row ends here, so that disposing it (e.g. at the end of await foreach) doesn't read on
+                _tupleEnumerable.State = RowState.Consumed;
+                throw _readBuffer.Connector.Break(new ArgumentOutOfRangeException());
             }
 
             _value.Reset(kind, len, _rowDescription[_pos]);
@@ -78,7 +80,7 @@ sealed class TupleEnumerator : IAsyncEnumerator<ReplicationValue>
     public ReplicationValue Current => _tupleEnumerable.State switch
     {
         RowState.NotRead => throw new ObjectDisposedException(null),
-        RowState.Reading => _value,
+        RowState.Reading => _pos >= 0 ? _value : throw new InvalidOperationException("MoveNextAsync has not been called yet."),
         RowState.Consumed => throw new ObjectDisposedException(null),
         _ => throw new ArgumentOutOfRangeException()
     };

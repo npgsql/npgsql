@@ -38,16 +38,16 @@ sealed class PolymorphicArrayTypeInfoProvider : PgConcreteTypeInfoProvider<objec
             ? PgProviderTypeInfo.GetProvider(_elementTypeInfo).GetDefault(_elementPgTypeId)
             : _elementTypeInfo.GetDefault(_elementPgTypeId));
 
-    protected override PgConcreteTypeInfo? GetForValueCore(ProviderValueContext context, object? value, ref object? writeState)
+    protected override PgConcreteTypeInfo? GetForValueCore(in ProviderValueContext context, object? value, ref object? writeState)
         => throw new NotSupportedException("Polymorphic writing is not supported.");
 
-    protected override PgConcreteTypeInfo? GetForFieldCore(Field field)
+    protected override PgConcreteTypeInfo? GetForFieldCore(in ProviderFieldContext context)
     {
         // When constructed as a same-authoring-unit composition, route directly to the inner provider, skipping the
-        // inner's wrapping ValidateConcrete on each call.
+        // inner's wrapping ValidateConcrete on each call. No id restamp: _elementTypeInfo is decided on the read path.
         var elementConcreteTypeInfo = _isCompositionalUnit
-            ? PgProviderTypeInfo.GetProvider(_elementTypeInfo).GetForField(field with { PgTypeId = _elementPgTypeId })
-            : _elementTypeInfo.GetForField(field with { PgTypeId = _elementPgTypeId });
+            ? PgProviderTypeInfo.GetProvider(_elementTypeInfo).GetForField(context)
+            : _elementTypeInfo.GetForField(context);
         return elementConcreteTypeInfo is not null ? GetOrAdd(elementConcreteTypeInfo) : null;
     }
 
@@ -56,7 +56,7 @@ sealed class PolymorphicArrayTypeInfoProvider : PgConcreteTypeInfoProvider<objec
         (PolymorphicArrayTypeInfoProvider Instance, PgConcreteTypeInfo ConcreteInfo) state = (this, elementConcreteTypeInfo);
         return _concreteInfoCache.GetOrAdd(elementConcreteTypeInfo,
             static (_, state) =>
-                new(state.ConcreteInfo.Options, state.Instance._elementToArrayConverterFactory(state.ConcreteInfo), state.Instance._pgTypeId),
+                new(state.ConcreteInfo.Options, state.Instance._elementToArrayConverterFactory(state.ConcreteInfo), null, state.Instance._pgTypeId),
             state);
     }
 }

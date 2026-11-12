@@ -55,7 +55,7 @@ public abstract class TypeHandlerBenchmarks<T>
         _writeBuffer = new NpgsqlWriteBuffer(null, stream, null, NpgsqlWriteBuffer.DefaultSize, NpgsqlWriteBuffer.UTF8Encoding) { MessageLengthValidation = false };
         _reader = new PgReader(_readBuffer);
         _writer = _writeBuffer.GetWriter(new PostgresMinimalDatabaseInfo(), FlushMode.Blocking);
-        _converter.CanConvert(DataFormat.Binary, out _binaryRequirements);
+        _binaryRequirements = _converter.GetDescriptor(new() { ConversionContext = PgConversionContext.Empty }).BufferRequirements;
     }
 
     public IEnumerable<T?> Values() => ValuesOverride();
@@ -82,7 +82,7 @@ public abstract class TypeHandlerBenchmarks<T>
             _value = value;
             object? writeState = null;
             var size = _converter.IsDbNull(value, writeState) ? null : (Size?)_converter.Bind(BindContext.CreateUnchecked(DataFormat.Binary, _binaryRequirements.Write, _binaryRequirements.IsBindOptional), value, ref writeState);
-            _valueBinding = new PgValueBinding(DataFormat.Binary, _binaryRequirements.Write, size, writeState);
+            _valueBinding = new PgValueBinding(DataFormat.Binary, _binaryRequirements.Write, size, writeState, _converter);
 
             if (!_valueBinding.IsDbNullBinding)
             {
@@ -96,7 +96,7 @@ public abstract class TypeHandlerBenchmarks<T>
                 _writeBuffer.WritePosition = 0;
 
                 _reader.Init(_valueBinding.DataFormat, _valueBinding.Size.Value.GetValueOrDefault());
-                _fieldBinding = new PgFieldBinding(DataFormat.Binary, _binaryRequirements.Read);
+                _fieldBinding = new PgFieldBinding(DataFormat.Binary, _binaryRequirements.Read, _converter);
             }
         }
     }

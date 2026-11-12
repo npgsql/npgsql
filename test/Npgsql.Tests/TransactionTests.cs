@@ -1,5 +1,6 @@
 using System;
 using System.Data;
+using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.Internal;
 using Npgsql.Tests.Support;
@@ -202,6 +203,55 @@ public class TransactionTests : TestBase
         Assert.That(() => conn.BeginTransaction(IsolationLevel.Chaos), Throws.Exception.TypeOf<NotSupportedException>());
     }
 
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/867")]
+    public async Task ReadOnly_option()
+    {
+        await using var conn = await OpenConnectionAsync();
+        await using (var tx = conn.BeginTransaction(IsolationLevel.Unspecified, NpgsqlTransactionOptions.ReadOnly))
+        {
+            Assert.That(conn.ExecuteScalar("SHOW transaction_read_only"), Is.EqualTo("on"));
+            Assert.That(() => conn.ExecuteNonQuery("CREATE TABLE not_allowed ()"),
+                Throws.Exception.TypeOf<PostgresException>()
+                    .With.Property(nameof(PostgresException.SqlState)).EqualTo(PostgresErrorCodes.ReadOnlySqlTransaction));
+            await tx.RollbackAsync();
+        }
+
+        await using (var tx = conn.BeginTransaction(IsolationLevel.Unspecified, NpgsqlTransactionOptions.None))
+            Assert.That(conn.ExecuteScalar("SHOW transaction_read_only"), Is.EqualTo("off"));
+    }
+
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/867")]
+    public async Task ReadOnly_option_async()
+    {
+        await using var conn = await OpenConnectionAsync();
+        await using var tx = await conn.BeginTransactionAsync(IsolationLevel.Unspecified, NpgsqlTransactionOptions.ReadOnly);
+        Assert.That(await conn.ExecuteScalarAsync("SHOW transaction_read_only"), Is.EqualTo("on"));
+    }
+
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/867")]
+    public async Task ReadOnly_and_Deferrable_options_with_isolation_level()
+    {
+        await using var conn = await OpenConnectionAsync();
+        await using var tx = conn.BeginTransaction(
+            IsolationLevel.Serializable, NpgsqlTransactionOptions.ReadOnly | NpgsqlTransactionOptions.Deferrable);
+
+        Assert.That(conn.ExecuteScalar("SHOW TRANSACTION ISOLATION LEVEL"), Is.EqualTo("serializable"));
+        Assert.That(conn.ExecuteScalar("SHOW transaction_read_only"), Is.EqualTo("on"));
+        Assert.That(conn.ExecuteScalar("SHOW transaction_deferrable"), Is.EqualTo("on"));
+    }
+
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/867")]
+    public async Task ReadOnly_and_Deferrable_options_with_isolation_level_async()
+    {
+        await using var conn = await OpenConnectionAsync();
+        await using var tx = await conn.BeginTransactionAsync(
+            IsolationLevel.Serializable, NpgsqlTransactionOptions.ReadOnly | NpgsqlTransactionOptions.Deferrable);
+
+        Assert.That(await conn.ExecuteScalarAsync("SHOW TRANSACTION ISOLATION LEVEL"), Is.EqualTo("serializable"));
+        Assert.That(await conn.ExecuteScalarAsync("SHOW transaction_read_only"), Is.EqualTo("on"));
+        Assert.That(await conn.ExecuteScalarAsync("SHOW transaction_deferrable"), Is.EqualTo("on"));
+    }
+
     [Test, Description("Rollback of an already rolled back transaction")]
     public async Task Rollback_twice()
     {
@@ -393,6 +443,16 @@ public class TransactionTests : TestBase
         tx.Rollback("a;b");
     }
 
+    [Test, Description("A savepoint name that is a reserved word only works quoted")]
+    public async Task Savepoint_named_like_a_reserved_word([Values("user", "select")] string name)
+    {
+        await using var conn = await OpenConnectionAsync();
+        await using var tx = conn.BeginTransaction();
+        tx.Save(name);
+        tx.Rollback(name);
+        tx.Release(name);
+    }
+
     [Test(Description = "Makes sure that creating a savepoint doesn't perform an additional roundtrip, but prepends to the next command")]
     public async Task Savepoint_prepends()
     {
@@ -417,7 +477,7 @@ public class TransactionTests : TestBase
         await conn.ExecuteScalarAsync("SELECT 1");
 
         await pgMock.ExpectSimpleQuery("BEGIN TRANSACTION ISOLATION LEVEL READ COMMITTED");
-        await pgMock.ExpectSimpleQuery("SAVEPOINT foo");
+        await pgMock.ExpectSimpleQuery("SAVEPOINT \"foo\"");
         await pgMock.ExpectExtendedQuery();
     }
 
@@ -633,10 +693,10 @@ public class TransactionTests : TestBase
 
     class NoTransactionDatabaseInfoFactory : INpgsqlDatabaseInfoFactory
     {
-        public async Task<NpgsqlDatabaseInfo?> Load(NpgsqlConnector conn, NpgsqlTimeout timeout, bool async)
+        public async Task<NpgsqlDatabaseInfo?> Load(NpgsqlConnector conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
         {
             var db = new NoTransactionDatabaseInfo(conn);
-            await db.LoadPostgresInfo(conn, timeout, async);
+            await db.LoadPostgresInfo(conn, timeout, async, cancellationToken);
             return db;
         }
     }

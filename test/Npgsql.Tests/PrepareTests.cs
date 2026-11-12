@@ -57,7 +57,7 @@ public class PrepareTests: TestBase
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3443")]
-    public void Bug3443()
+    public async Task Bug3443()
     {
         using var conn = OpenConnectionAndUnprepare();
         using var cmd = new NpgsqlCommand("SELECT 1", conn);
@@ -65,7 +65,7 @@ public class PrepareTests: TestBase
         Assert.That(cmd.ExecuteScalar(), Is.EqualTo(1));
         Assert.That(cmd.IsPrepared, Is.False);
 
-        Assert.ThrowsAsync<OperationCanceledException>(() => cmd.PrepareAsync(new(canceled: true)));
+        await Assert.ThrowsAsync<OperationCanceledException>(() => cmd.PrepareAsync(new(canceled: true)));
         AssertNumPreparedStatements(conn, 0);
         Assert.That(cmd.IsPrepared, Is.False);
 
@@ -742,7 +742,7 @@ public class PrepareTests: TestBase
         await connection.ExecuteNonQueryAsync($"ALTER TABLE {table} RENAME COLUMN foo TO bar");
 
         // Since we've changed the table schema, the next execution of the prepared statement will error with 0A000
-        var exception = Assert.ThrowsAsync<PostgresException>(() => command.ExecuteNonQueryAsync())!;
+        var exception = (await Assert.ThrowsAsync<PostgresException>(() => command.ExecuteNonQueryAsync()))!;
         Assert.That(exception.SqlState, Is.EqualTo(PostgresErrorCodes.FeatureNotSupported)); // cached plan must not change result type
         Assert.That(command.IsPrepared, Is.False);
 
@@ -761,7 +761,7 @@ public class PrepareTests: TestBase
         }
 
         // However, Npgsql should invalidate the prepared statement in this case, so the next execution should work
-        Assert.DoesNotThrowAsync(() => command.ExecuteNonQueryAsync());
+        await Assert.DoesNotThrowAsync(() => command.ExecuteNonQueryAsync());
 
         if (!prepareAfterError)
         {

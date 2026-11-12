@@ -26,13 +26,13 @@ sealed class JsonNetTypeInfoResolverFactory(JsonSerializerSettings? settings = n
             {
                 var jsonb = dataTypeName == "jsonb";
                 mappings.AddType<JToken>(dataTypeName, (options, mapping, _) =>
-                    mapping.CreateInfo(options, new JsonNetJsonConverter<JToken>(jsonb, options.TextEncoding, settings)));
+                    mapping.CreateInfo(options, new JsonNetJsonConverter<JToken>(jsonb, settings)));
                 mappings.AddType<JObject>(dataTypeName, (options, mapping, _) =>
-                    mapping.CreateInfo(options, new JsonNetJsonConverter<JObject>(jsonb, options.TextEncoding, settings)));
+                    mapping.CreateInfo(options, new JsonNetJsonConverter<JObject>(jsonb, settings)));
                 mappings.AddType<JArray>(dataTypeName, (options, mapping, _) =>
-                    mapping.CreateInfo(options, new JsonNetJsonConverter<JArray>(jsonb, options.TextEncoding, settings)));
+                    mapping.CreateInfo(options, new JsonNetJsonConverter<JArray>(jsonb, settings)));
                 mappings.AddType<JValue>(dataTypeName, (options, mapping, _) =>
-                    mapping.CreateInfo(options, new JsonNetJsonConverter<JValue>(jsonb, options.TextEncoding, settings)));
+                    mapping.CreateInfo(options, new JsonNetJsonConverter<JValue>(jsonb, settings)));
             }
 
             return mappings;

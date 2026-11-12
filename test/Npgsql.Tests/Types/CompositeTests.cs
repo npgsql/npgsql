@@ -423,7 +423,7 @@ CREATE TYPE {compositeType} AS (date_times timestamp[])");
         await using var dataSource = dataSourceBuilder.Build();
         await using var connection = await dataSource.OpenConnectionAsync();
 
-        var ex = Assert.ThrowsAsync<InvalidCastException>(() => AssertType(
+        var ex = await Assert.ThrowsAsync<InvalidCastException>(() => AssertType(
             connection,
             new SomeCompositeWithTypeInfoProviderType { DateTimes = [DateTime.UnixEpoch] }, // UTC DateTime
             """("{""1970-01-01 01:00:00"",""1970-01-02 01:00:00""}")""",
@@ -449,7 +449,7 @@ CREATE TYPE {compositeType} AS (date_times timestamp[])");
             await DoAssertion();
         else
         {
-            Assert.ThrowsAsync<NotSupportedException>(DoAssertion);
+            await Assert.ThrowsAsync<NotSupportedException>(DoAssertion);
             Assert.That(connection.Connector!.DatabaseInfo.CompositeTypes.SingleOrDefault(c => c.Name.Contains(table)), Is.Null);
             Assert.That(connection.Connector!.DatabaseInfo.ArrayTypes.SingleOrDefault(c => c.Name.Contains(table)), Is.Null);
 
@@ -574,7 +574,7 @@ CREATE TYPE {type2} AS (comp {type1}, comps {type1}[]);");
         dataSourceBuilder.MapComposite<DuplicateOneLongOneBool>(type);
         await using var dataSource = dataSourceBuilder.Build();
 
-        var ex = Assert.ThrowsAsync<InvalidCastException>(async () => await AssertType(
+        var ex = await Assert.ThrowsAsync<InvalidCastException>(async () => await AssertType(
             dataSource,
             new DuplicateOneLongOneBool(true, 1),
             "(1,t)",
@@ -594,7 +594,7 @@ CREATE TYPE {type2} AS (comp {type1}, comps {type1}[]);");
         dataSourceBuilder.MapComposite<MissingSetterOneLongOneBool>(type);
         await using var dataSource = dataSourceBuilder.Build();
 
-        var ex = Assert.ThrowsAsync<InvalidOperationException>(async () => await AssertTypeRead(
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(async () => await AssertTypeRead(
             dataSource,
             "(1,t)",
             type,

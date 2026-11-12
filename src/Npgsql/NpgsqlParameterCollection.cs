@@ -589,6 +589,7 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
     public override void AddRange(Array values)
     {
         ArgumentNullException.ThrowIfNull(values);
+        InternalList.EnsureCapacity(InternalList.Count + values.Length);
 
         foreach (var parameter in values)
             Add(Cast(parameter));

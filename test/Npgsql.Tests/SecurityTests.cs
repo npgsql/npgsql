@@ -254,7 +254,7 @@ public class SecurityTests : TestBase
     }
 
     [Test]
-    [Platform(Exclude = "Win", Reason = "Postgresql doesn't close connection correctly on windows which might result in missing error message")]
+    [Platform(Exclude = PlatformNames.Win, Reason = "PostgreSQL doesn't close connection correctly on Windows which might result in missing error message")]
     public async Task Connect_with_only_non_ssl_allowed_user([Values] bool keepAlive)
     {
         try
@@ -302,10 +302,10 @@ public class SecurityTests : TestBase
         await using var connection = dataSource.CreateConnection();
 
         if (acceptCertificate)
-            Assert.DoesNotThrowAsync(async () => await connection.OpenAsync());
+            await Assert.DoesNotThrowAsync(async () => await connection.OpenAsync());
         else
         {
-            var ex = Assert.ThrowsAsync<NpgsqlException>(async () => await connection.OpenAsync())!;
+            var ex = (await Assert.ThrowsAsync<NpgsqlException>(async () => await connection.OpenAsync()))!;
             Assert.That(ex.InnerException, Is.TypeOf<AuthenticationException>());
         }
 
@@ -331,10 +331,10 @@ public class SecurityTests : TestBase
         };
 
         if (acceptCertificate)
-            Assert.DoesNotThrowAsync(async () => await connection.OpenAsync());
+            await Assert.DoesNotThrowAsync(async () => await connection.OpenAsync());
         else
         {
-            var ex = Assert.ThrowsAsync<NpgsqlException>(async () => await connection.OpenAsync())!;
+            var ex = (await Assert.ThrowsAsync<NpgsqlException>(async () => await connection.OpenAsync()))!;
             Assert.That(ex.InnerException, Is.TypeOf<AuthenticationException>());
         }
 
@@ -342,7 +342,7 @@ public class SecurityTests : TestBase
     }
 
     [Test]
-    public void Connect_with_Verify_and_callback_throws([Values(SslMode.VerifyCA, SslMode.VerifyFull)] SslMode sslMode)
+    public async Task Connect_with_Verify_and_callback_throws([Values(SslMode.VerifyCA, SslMode.VerifyFull)] SslMode sslMode)
     {
         using var dataSource = CreateDataSource(csb => csb.SslMode = sslMode);
         using var connection = dataSource.CreateConnection();
@@ -351,12 +351,12 @@ public class SecurityTests : TestBase
             options.RemoteCertificateValidationCallback = (_, _, _, _) => true;
         };
 
-        var ex = Assert.ThrowsAsync<ArgumentException>(async () => await connection.OpenAsync())!;
+        var ex = (await Assert.ThrowsAsync<ArgumentException>(async () => await connection.OpenAsync()))!;
         Assert.That(ex.Message, Is.EqualTo(string.Format(NpgsqlStrings.CannotUseSslVerifyWithCustomValidationCallback, sslMode)));
     }
 
     [Test]
-    public void Connect_with_RootCertificate_and_callback_throws()
+    public async Task Connect_with_RootCertificate_and_callback_throws()
     {
         using var dataSource = CreateDataSource(csb =>
         {
@@ -369,7 +369,7 @@ public class SecurityTests : TestBase
             options.RemoteCertificateValidationCallback = (_, _, _, _) => true;
         };
 
-        var ex = Assert.ThrowsAsync<ArgumentException>(async () => await connection.OpenAsync())!;
+        var ex = (await Assert.ThrowsAsync<ArgumentException>(async () => await connection.OpenAsync()))!;
         Assert.That(ex.Message, Is.EqualTo(string.Format(NpgsqlStrings.CannotUseSslRootCertificateWithCustomValidationCallback)));
     }
 
@@ -407,7 +407,7 @@ public class SecurityTests : TestBase
             cmd.CommandText = "select pg_sleep(30)";
             cmd.CommandTimeout = 3;
             var ex = async
-                ? Assert.ThrowsAsync<NpgsqlException>(() => cmd.ExecuteNonQueryAsync())!
+                ? (await Assert.ThrowsAsync<NpgsqlException>(() => cmd.ExecuteNonQueryAsync()))!
                 : Assert.Throws<NpgsqlException>(() => cmd.ExecuteNonQuery())!;
             Assert.That(ex.InnerException, Is.TypeOf<TimeoutException>());
 
@@ -419,7 +419,7 @@ public class SecurityTests : TestBase
 
         cmd.CommandText = "SELECT 1";
         if (async)
-            Assert.DoesNotThrowAsync(async () => await cmd.ExecuteNonQueryAsync());
+            await Assert.DoesNotThrowAsync(async () => await cmd.ExecuteNonQueryAsync());
         else
             Assert.DoesNotThrow(() => cmd.ExecuteNonQuery());
     }
@@ -456,7 +456,7 @@ public class SecurityTests : TestBase
         cmd.CommandText = "select pg_sleep(30)";
         cmd.CommandTimeout = 3;
         var ex = async
-            ? Assert.ThrowsAsync<NpgsqlException>(() => cmd.ExecuteNonQueryAsync())!
+            ? (await Assert.ThrowsAsync<NpgsqlException>(() => cmd.ExecuteNonQueryAsync()))!
             : Assert.Throws<NpgsqlException>(() => cmd.ExecuteNonQuery())!;
         Assert.That(ex.InnerException, Is.TypeOf<TimeoutException>());
 
@@ -467,7 +467,7 @@ public class SecurityTests : TestBase
 
         cmd.CommandText = "SELECT 1";
         if (async)
-            Assert.DoesNotThrowAsync(async () => await cmd.ExecuteNonQueryAsync());
+            await Assert.DoesNotThrowAsync(async () => await cmd.ExecuteNonQueryAsync());
         else
             Assert.DoesNotThrow(() => cmd.ExecuteNonQuery());
     }
@@ -513,7 +513,7 @@ public class SecurityTests : TestBase
     }
 
     [Test]
-    [Platform(Exclude = "MacOsX", Reason = "Mac requires explicit opt-in to receive CA certificate in TLS handshake")]
+    [Platform(Exclude = PlatformNames.MacOSX, Reason = "Mac requires explicit opt-in to receive CA certificate in TLS handshake")]
     public async Task Connect_with_verify_and_ca_cert([Values(SslMode.VerifyCA, SslMode.VerifyFull)] SslMode sslMode)
     {
         if (!IsOnBuildServer)
@@ -529,7 +529,7 @@ public class SecurityTests : TestBase
     }
 
     [Test]
-    [Platform(Exclude = "MacOsX", Reason = "Mac requires explicit opt-in to receive CA certificate in TLS handshake")]
+    [Platform(Exclude = PlatformNames.MacOSX, Reason = "Mac requires explicit opt-in to receive CA certificate in TLS handshake")]
     public async Task Connect_with_verify_check_host([Values(SslMode.VerifyCA, SslMode.VerifyFull)] SslMode sslMode)
     {
         if (!IsOnBuildServer)
@@ -548,13 +548,13 @@ public class SecurityTests : TestBase
         }
         else
         {
-            var ex = Assert.ThrowsAsync<NpgsqlException>(async () => await dataSource.OpenConnectionAsync())!;
+            var ex = (await Assert.ThrowsAsync<NpgsqlException>(async () => await dataSource.OpenConnectionAsync()))!;
             Assert.That(ex.InnerException, Is.TypeOf<AuthenticationException>());
         }
     }
 
     [Test]
-    [Platform(Exclude = "MacOsX", Reason = "Mac requires explicit opt-in to receive CA certificate in TLS handshake")]
+    [Platform(Exclude = PlatformNames.MacOSX, Reason = "Mac requires explicit opt-in to receive CA certificate in TLS handshake")]
     public async Task Connect_with_verify_and_multiple_ca_cert([Values(SslMode.VerifyCA, SslMode.VerifyFull)] SslMode sslMode, [Values] bool realCaFirst)
     {
         if (!IsOnBuildServer)
@@ -605,7 +605,7 @@ public class SecurityTests : TestBase
             });
             if (sslMode is SslMode.Disable or SslMode.Allow or SslMode.Prefer)
             {
-                var ex = Assert.ThrowsAsync<ArgumentException>(async () => await dataSource.OpenConnectionAsync())!;
+                var ex = (await Assert.ThrowsAsync<ArgumentException>(async () => await dataSource.OpenConnectionAsync()))!;
                 Assert.That(ex.Message, Is.EqualTo("SSL Mode has to be Require or higher to be used with direct SSL Negotiation"));
             }
             else

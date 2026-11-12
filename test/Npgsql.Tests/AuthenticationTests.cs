@@ -70,13 +70,13 @@ public class AuthenticationTests : TestBase
     }
 
     [Test]
-    public void Password_provider_exception()
+    public async Task Password_provider_exception()
     {
         var dataSourceBuilder = GetPasswordlessDataSourceBuilder();
         dataSourceBuilder.UsePasswordProvider(_ => throw new Exception(), (_,_) => throw new Exception());
 
         using var dataSource = dataSourceBuilder.Build();
-        Assert.ThrowsAsync<NpgsqlException>(async () => await dataSource.OpenConnectionAsync());
+        await Assert.ThrowsAsync<NpgsqlException>(async () => await dataSource.OpenConnectionAsync());
     }
 
     [Test]
@@ -368,7 +368,7 @@ public class AuthenticationTests : TestBase
         // request. This should trigger a timeout
         await using var dataSource = CreateDataSource(postmasterMock.ConnectionString);
         await using var connection = dataSource.CreateConnection();
-        var ex = Assert.ThrowsAsync<NpgsqlException>(async () => await connection.OpenAsync());
+        var ex = await Assert.ThrowsAsync<NpgsqlException>(async () => await connection.OpenAsync());
         Assert.That(ex.InnerException, Is.TypeOf<TimeoutException>());
     }
 

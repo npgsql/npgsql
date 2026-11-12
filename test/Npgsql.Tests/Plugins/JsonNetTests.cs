@@ -1,6 +1,5 @@
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using Npgsql.Tests;
 using NUnit.Framework;
 using System;
 using System.Data;
@@ -9,7 +8,7 @@ using System.Threading.Tasks;
 // ReSharper disable AccessToModifiedClosure
 // ReSharper disable AccessToDisposedClosure
 
-namespace Npgsql.PluginTests;
+namespace Npgsql.Tests.Plugins;
 
 /// <summary>
 /// Tests for the Npgsql.Json.NET mapping plugin

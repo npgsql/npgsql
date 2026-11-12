@@ -22,8 +22,8 @@ public abstract class NpgsqlDataSource : DbDataSource
     public override string ConnectionString { get; }
 
     /// <summary>
-    /// Contains the connection string returned to the user from <see cref="NpgsqlConnection.ConnectionString"/>
-    /// after the connection has been opened. Does not contain the password unless Persist Security Info=true.
+    /// The settings of this data source. Unlike <see cref="ConnectionString"/>, which <see cref="NpgsqlConnection.ConnectionString"/>
+    /// returns to the user, they contain the password even if Persist Security Info is false.
     /// </summary>
     internal NpgsqlConnectionStringBuilder Settings { get; }
 
@@ -305,23 +305,18 @@ public abstract class NpgsqlDataSource : DbDataSource
             // empty). So we set up a minimal version here, and then later inject the actual DatabaseInfo.
             connector.ReloadableState = new(
                 databaseInfo: PostgresMinimalDatabaseInfo.DefaultTypeCatalog,
-                serializerOptions: new(PostgresMinimalDatabaseInfo.DefaultTypeCatalog)
+                serializerOptions: new(PostgresMinimalDatabaseInfo.DefaultTypeCatalog, textEncoding: connector.TextEncoding)
                 {
-                    TextEncoding = connector.TextEncoding,
                     TypeInfoResolver = AdoTypeInfoResolverFactory.Instance.CreateResolver(),
                 },
                 dbTypeResolver: null);
 
-            NpgsqlDatabaseInfo databaseInfo;
+            var databaseInfo = await NpgsqlDatabaseInfo.Load(connector, timeout, async, cancellationToken).ConfigureAwait(false);
 
-            using (connector.StartUserAction(ConnectorState.Executing, cancellationToken))
-                databaseInfo = await NpgsqlDatabaseInfo.Load(connector, timeout, async).ConfigureAwait(false);
-
-            var serializerOptions = new PgSerializerOptions(databaseInfo, _resolverChain, CreateTimeZoneProvider(connector.Timezone))
+            var serializerOptions = new PgSerializerOptions(databaseInfo, _resolverChain, CreateTimeZoneProvider(connector.Timezone), textEncoding: connector.TextEncoding)
             {
                 ArrayNullabilityMode = Settings.ArrayNullabilityMode,
                 EnableDateTimeInfinityConversions = !Statics.DisableDateTimeInfinityConversions,
-                TextEncoding = connector.TextEncoding,
                 DefaultNameTranslator = _defaultNameTranslator
             };
 

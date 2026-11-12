@@ -7,7 +7,7 @@ using Npgsql.Internal;
 namespace Npgsql.Replication.PgOutput.Messages;
 
 /// <summary>
-/// Logical Replication Protocol delete message for tables with REPLICA IDENTITY REPLICA IDENTITY set to FULL.
+/// Logical Replication Protocol delete message for tables with REPLICA IDENTITY set to FULL.
 /// </summary>
 public sealed class FullDeleteMessage : DeleteMessage
 {

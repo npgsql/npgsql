@@ -1,7 +1,7 @@
 namespace Npgsql.Replication;
 
 /// <summary>
-/// Contains information about a newly-created replication slot.
+/// Contains information about a replication slot.
 /// </summary>
 public abstract class ReplicationSlot
 {
@@ -9,7 +9,7 @@ public abstract class ReplicationSlot
         => Name = name;
 
     /// <summary>
-    /// The name of the newly-created replication slot.
+    /// The name of the replication slot.
     /// </summary>
     public string Name { get; }
 }

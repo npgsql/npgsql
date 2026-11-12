@@ -104,7 +104,7 @@ public class ConnectionTests : TestBase
         await using (var killingConn = await OpenConnectionAsync())
             killingConn.ExecuteNonQuery($"SELECT pg_terminate_backend({conn.ProcessID})");
 
-        Assert.ThrowsAsync<PostgresException>(() => sleep);
+        await Assert.ThrowsAsync<PostgresException>(() => sleep);
 
         Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
         Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));
@@ -121,10 +121,10 @@ public class ConnectionTests : TestBase
             Assert.That(eventClosed, Is.True);
         }
 
-        Assert.DoesNotThrowAsync(conn.OpenAsync);
+        await Assert.DoesNotThrowAsync(conn.OpenAsync);
         Assert.That(await conn.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1));
         Assert.That(conn.NpgsqlDataSource.Statistics.Total, Is.EqualTo(1));
-        Assert.DoesNotThrowAsync(conn.CloseAsync);
+        await Assert.DoesNotThrowAsync(conn.CloseAsync);
     }
 
     [Test]
@@ -229,14 +229,14 @@ public class ConnectionTests : TestBase
             });
 
             await using var conn2 = dataSource.CreateConnection();
-            var pgEx = Assert.ThrowsAsync<PostgresException>(conn2.OpenAsync)!;
+            var pgEx = (await Assert.ThrowsAsync<PostgresException>(conn2.OpenAsync))!;
             Assert.That(pgEx.SqlState, Is.EqualTo(PostgresErrorCodes.InvalidCatalogName)); // database doesn't exist
             Assert.That(conn2.FullState, Is.EqualTo(ConnectionState.Closed));
 
             await conn1.ExecuteNonQueryAsync($"CREATE DATABASE \"{dbName}\" TEMPLATE template0");
 
-            Assert.DoesNotThrowAsync(conn2.OpenAsync);
-            Assert.DoesNotThrowAsync(conn2.CloseAsync);
+            await Assert.DoesNotThrowAsync(conn2.OpenAsync);
+            await Assert.DoesNotThrowAsync(conn2.CloseAsync);
         }
         finally
         {
@@ -526,7 +526,7 @@ public class ConnectionTests : TestBase
     }
 
     [Test]
-    [Platform(Exclude = "MacOsX", Reason = "Fails only on mac, needs to be investigated")]
+    [Platform(Exclude = PlatformNames.MacOSX, Reason = "Fails only on mac, needs to be investigated")]
     public async Task Unix_abstract_domain_socket()
     {
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
@@ -787,6 +787,38 @@ public class ConnectionTests : TestBase
                 await conn1.ExecuteNonQueryAsync($"DROP SCHEMA IF EXISTS \"{otherSchema}\" CASCADE");
         }
 
+    }
+
+    [Test, Description("Schema names with backslashes also work when standard_conforming_strings is off")]
+    [Parallelizable(ParallelScope.None)]
+    public async Task Set_Schemas_with_backslashes([Values("test_schema_\\", "test_schema_\\') OR true --")] string schema)
+    {
+        await using var conn1 = await OpenConnectionAsync();
+        MaximumPgVersionExclusive(conn1, "19.0", "PostgreSQL 19 requires standard_conforming_strings to be on");
+        try
+        {
+            await conn1.ExecuteNonQueryAsync($"DROP SCHEMA IF EXISTS \"{schema}\" CASCADE");
+            await conn1.ExecuteNonQueryAsync($"CREATE SCHEMA \"{schema}\"");
+            await conn1.ExecuteNonQueryAsync($"CREATE TYPE \"{schema}\".test_type_backslash AS (id int)");
+            await conn1.ExecuteNonQueryAsync("DROP TYPE IF EXISTS public.test_type_not_loaded");
+            await conn1.ExecuteNonQueryAsync("CREATE TYPE public.test_type_not_loaded AS (id int)");
+
+            await using var dataSource = CreateDataSource(builder =>
+            {
+                // With it off, a backslash in an ordinary string literal starts an escape sequence
+                builder.ConnectionStringBuilder.Options = "-c standard_conforming_strings=off";
+                builder.ConfigureTypeLoading(typeLoading => typeLoading.SetTypeLoadingSchemas(schema));
+            });
+            await using var conn = await dataSource.OpenConnectionAsync();
+            var compositeTypes = dataSource.CurrentReloadableState.DatabaseInfo.CompositeTypes;
+            Assert.That(compositeTypes.Any(x => x.Name == "test_type_backslash"));
+            Assert.That(compositeTypes.Any(x => x.Name == "test_type_not_loaded"), Is.False);
+        }
+        finally
+        {
+            await conn1.ExecuteNonQueryAsync($"DROP SCHEMA IF EXISTS \"{schema}\" CASCADE");
+            await conn1.ExecuteNonQueryAsync("DROP TYPE IF EXISTS public.test_type_not_loaded");
+        }
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/703")]
@@ -1170,7 +1202,7 @@ LANGUAGE 'plpgsql'");
         await using var clonedConnection = (NpgsqlConnection)((ICloneable)connection).Clone();
 
         Assert.That(clonedConnection.NpgsqlDataSource, Is.SameAs(DataSource));
-        Assert.DoesNotThrowAsync(() => clonedConnection.OpenAsync());
+        await Assert.DoesNotThrowAsync(() => clonedConnection.OpenAsync());
     }
 
     [Test]
@@ -1433,7 +1465,7 @@ CREATE TABLE record ()");
         await using var conn = await dataSource.OpenConnectionAsync();
         await using var tx = await conn.BeginTransactionAsync();
 
-        Assert.ThrowsAsync<PostgresException>(async () => await conn.ExecuteScalarAsync("SELECT non_existent_table"));
+        await Assert.ThrowsAsync<PostgresException>(async () => await conn.ExecuteScalarAsync("SELECT non_existent_table"));
         // Connection is now in a failed transaction state. Wait a bit to allow for the keepalive to execute.
         Thread.Sleep(3000);
 
@@ -1698,12 +1730,12 @@ CREATE TABLE record ()");
         await using var dataSource = dataSourceBuilder.Build();
 
         await using var conn1 = dataSource.CreateConnection();
-        Assert.DoesNotThrowAsync(async () => await conn1.OpenAsync());
+        await Assert.DoesNotThrowAsync(async () => await conn1.OpenAsync());
 
         await using var tx = await conn1.BeginTransactionAsync();
 
         await using var conn2 = dataSource.CreateConnection();
-        var exception = Assert.ThrowsAsync<Exception>(async () => await conn2.OpenAsync())!;
+        var exception = (await Assert.ThrowsAsync<Exception>(async () => await conn2.OpenAsync()))!;
         Assert.That(exception.Message, Is.EqualTo("INTENTIONAL FAILURE"));
     }
 
@@ -1778,7 +1810,7 @@ CREATE TABLE record ()");
         {
             csb.RequireAuth = $"{RequireAuthMode.None}";
         });
-        var ex = Assert.ThrowsAsync<NpgsqlException>(async () => await dataSource.OpenConnectionAsync())!;
+        var ex = (await Assert.ThrowsAsync<NpgsqlException>(async () => await dataSource.OpenConnectionAsync()))!;
         Assert.That(ex.Message, Does.Contain("authentication method is not allowed"));
     }
 
@@ -1788,7 +1820,7 @@ CREATE TABLE record ()");
     {
         using var _ = SetEnvironmentVariable("PGREQUIREAUTH", $"{RequireAuthMode.None}");
         await using var dataSource = CreateDataSource();
-        var ex = Assert.ThrowsAsync<NpgsqlException>(async () => await dataSource.OpenConnectionAsync())!;
+        var ex = (await Assert.ThrowsAsync<NpgsqlException>(async () => await dataSource.OpenConnectionAsync()))!;
         Assert.That(ex.Message, Does.Contain("authentication method is not allowed"));
     }
 
@@ -1876,7 +1908,7 @@ CREATE TABLE record ()");
         try
         {
             // Test the first time we load the database info
-            Assert.ThrowsAsync<IOException>(firstConn.OpenAsync);
+            await Assert.ThrowsAsync<IOException>(firstConn.OpenAsync);
         }
         finally
         {
@@ -1892,7 +1924,7 @@ CREATE TABLE record ()");
         try
         {
             // Make sure that the database info is now cached and won't be reloaded
-            Assert.DoesNotThrowAsync(secondConn.OpenAsync);
+            await Assert.DoesNotThrowAsync(secondConn.OpenAsync);
         }
         finally
         {
@@ -1902,8 +1934,57 @@ CREATE TABLE record ()");
 
     class BreakingDatabaseInfoFactory : INpgsqlDatabaseInfoFactory
     {
-        public Task<NpgsqlDatabaseInfo?> Load(NpgsqlConnector conn, NpgsqlTimeout timeout, bool async)
+        public Task<NpgsqlDatabaseInfo?> Load(NpgsqlConnector conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
             => throw conn.Break(new IOException());
+    }
+
+    [Test]
+    [NonParallelizable] // Modifies global database info factories
+    [IssueLink("https://github.com/npgsql/npgsql/issues/6633")]
+    public async Task Allow_to_query_while_loading_database_info([Values] bool async)
+    {
+        await using var dataSource = CreateDataSource();
+
+        var factory = new QueryingDatabaseInfoFactory(dataSource);
+        NpgsqlDatabaseInfo.RegisterFactory(factory);
+        try
+        {
+            await using var _ = async
+                ? await dataSource.OpenConnectionAsync()
+                : dataSource.OpenConnection();
+            Assert.That(factory.QueryExecuted, Is.True);
+        }
+        finally
+        {
+            NpgsqlDatabaseInfo.ResetFactories();
+        }
+    }
+
+    class QueryingDatabaseInfoFactory(NpgsqlDataSource dataSource) : INpgsqlDatabaseInfoFactory
+    {
+        public async Task<NpgsqlDatabaseInfo?> Load(NpgsqlConnector conn, NpgsqlTimeout timeout, bool async,
+            CancellationToken cancellationToken)
+        {
+            // The factory is registered globally, so leave the connectors of other data sources (e.g. of tests running
+            // in parallel) to the default factories
+            if (conn.DataSource != dataSource)
+                return null;
+
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "SELECT 1";
+
+            var result = async
+                ? await cmd.ExecuteScalarAsync(cancellationToken)
+                : cmd.ExecuteScalar();
+
+            Assert.That(result, Is.EqualTo(1));
+
+            QueryExecuted = true;
+
+            return null;
+        }
+
+        public bool QueryExecuted { get; private set; }
     }
 
     #region Logging tests
