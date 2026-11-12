@@ -452,6 +452,18 @@ static partial class LogMessages
     internal static partial void ExecutingReplicationCommand(ILogger logger, string CommandText, int ConnectorId);
 
     [LoggerMessage(
+        EventId = NpgsqlEventId.ReplicationTimelineEnded,
+        Level = LogLevel.Information,
+        Message = "Replication reached the end of the streamed timeline; the next timeline is {NextTimeline}, starting at {NextTimelineStartLsn}")]
+    internal static partial void ReplicationTimelineEnded(ILogger logger, string? NextTimeline, string? NextTimelineStartLsn, int ConnectorId);
+
+    [LoggerMessage(
+        EventId = NpgsqlEventId.ReplicationStreamEndedByServer,
+        Level = LogLevel.Information,
+        Message = "The server ended the replication stream")]
+    internal static partial void ReplicationStreamEndedByServer(ILogger logger, int ConnectorId);
+
+    [LoggerMessage(
         EventId = NpgsqlEventId.ReceivedReplicationPrimaryKeepalive,
         Level = LogLevel.Trace,
         Message = "Received replication primary keepalive message from the server with current end of WAL of {EndLsn} and timestamp of {Timestamp}")]
