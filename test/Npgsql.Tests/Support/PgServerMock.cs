@@ -204,6 +204,12 @@ class PgServerMock : IDisposable
 
     internal Task WaitForData() => _readBuffer.EnsureAsync(1).AsTask();
 
+    /// <summary>
+    /// Whether the client sent something that hasn't been read yet. Unlike <see cref="WaitForData"/>, this doesn't leave a read
+    /// pending, which could take the client's next message away from the following Expect call.
+    /// </summary>
+    internal bool DataAvailable => _readBuffer.ReadBytesLeft > 0 || _stream.DataAvailable;
+
     internal Task FlushAsync()
     {
         CheckDisposed();
