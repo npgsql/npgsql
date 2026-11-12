@@ -551,6 +551,10 @@ public class DateTimeTests : TestBase
     public Task Interval_with_months_cannot_read_as_TimeSpan()
         => AssertTypeUnsupportedRead<TimeSpan, InvalidCastException>("1 month 2 days", "interval");
 
+    [Test]
+    public Task Interval_with_negative_months_cannot_read_as_TimeSpan()
+        => AssertTypeUnsupportedRead<TimeSpan, InvalidCastException>("-1 month", "interval");
+
     #endregion
 
     protected override async ValueTask<NpgsqlConnection> OpenConnectionAsync()
