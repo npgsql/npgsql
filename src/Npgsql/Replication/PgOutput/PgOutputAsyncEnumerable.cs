@@ -91,12 +91,13 @@ sealed class PgOutputAsyncEnumerable : IAsyncEnumerable<PgOutputReplicationMessa
 
         var stream = _connection.StartLogicalReplication(
             _slot, cancellationToken, _walLocation, _options.GetOptionPairs(), bypassingStream: true);
-        var buf = _connection.Connector!.ReadBuffer;
         var inStreamingTransaction = false;
         var dataFormat = _options.Binary ?? false ? DataFormat.Binary : DataFormat.Text;
 
         await foreach (var xLogData in stream.WithCancellation(cancellationToken).ConfigureAwait(false))
         {
+            // An oversize message (e.g. a big notice) between two messages makes the connector switch to a bigger buffer
+            var buf = _connection.Connector!.ReadBuffer;
             await buf.EnsureAsync(1).ConfigureAwait(false);
             var messageCode = (BackendReplicationMessageCode)buf.ReadByte();
             switch (messageCode)
