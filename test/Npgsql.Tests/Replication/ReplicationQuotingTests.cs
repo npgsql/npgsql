@@ -72,6 +72,66 @@ public class ReplicationSlotNameTests<TConnection> : SafeReplicationTestBase<TCo
                 }
             });
 
+    [TestCase(" {0} ", "padded", Description = "The server skips the whitespace around the name")]
+    [TestCase("\"{0}\"", "quoted", Description = "The server reads a quoted name without its quotes")]
+    [TestCase("{0}", "plain")]
+    public Task ReadReplicationSlot_returns_the_slot_name(string spelling, string spellingName)
+    {
+        if (!IsPhysical)
+            Assert.Ignore("ReadReplicationSlot is only on physical replication connections");
+
+        return SafeReplicationTest(
+            async (slotName, _) =>
+            {
+                await using var c = await OpenConnectionAsync();
+                TestUtil.MinimumPgVersion(c, "15.0", "The READ_REPLICATION_SLOT command was introduced in PostgreSQL 15");
+                await c.ExecuteNonQueryAsync($"SELECT pg_create_physical_replication_slot('{slotName}')");
+                await using var rc = await OpenReplicationConnectionAsync();
+
+                var slot = await ((PhysicalReplicationConnection)(ReplicationConnection)rc).ReadReplicationSlot(
+                    string.Format(spelling, slotName));
+
+                Assert.That(slot?.Name, Is.EqualTo(slotName));
+            }, $"{nameof(ReadReplicationSlot_returns_the_slot_name)}_{spellingName}");
+    }
+
+    [TestCase(false, Description = "The server truncates a name longer than max_identifier_length before it looks up the slot")]
+    [TestCase(true, Description = "Sent unquoted because of its non-ASCII letter, which the server cuts off after lowercasing A-Z")]
+    public Task ReadReplicationSlot_returns_the_truncated_slot_name(bool uppercaseWithNonAsciiTail)
+    {
+        if (!IsPhysical)
+            Assert.Ignore("ReadReplicationSlot is only on physical replication connections");
+
+        return SafeReplicationTest(
+            async (slotName, _) =>
+            {
+                await using var c = await OpenConnectionAsync();
+                TestUtil.MinimumPgVersion(c, "15.0", "The READ_REPLICATION_SLOT command was introduced in PostgreSQL 15");
+                var maxLength = int.Parse((string)(await c.ExecuteScalarAsync("SHOW max_identifier_length"))!);
+                if (maxLength != 63)
+                    Assert.Ignore("Npgsql assumes the default max_identifier_length of 63 for ReadReplicationSlot's name");
+                var fullLengthName = slotName.PadRight(maxLength, 'x');
+                await DropSlotIfExists(c, fullLengthName);
+                try
+                {
+                    await c.ExecuteNonQueryAsync($"SELECT pg_create_physical_replication_slot('{fullLengthName}')");
+                    await using var rc = await OpenReplicationConnectionAsync();
+
+                    // Not é: a walsender without a database lowercases each byte above 0x7F that its locale calls uppercase,
+                    // like é's first byte (Ã in Latin-1) on CI's Windows and macOS servers, and its truncation notice then isn't
+                    // valid UTF-8, which fails the command (downcase_identifier, pg_server_to_any). 中 has no such byte.
+                    var slot = await ((PhysicalReplicationConnection)(ReplicationConnection)rc).ReadReplicationSlot(
+                        uppercaseWithNonAsciiTail ? fullLengthName.ToUpperInvariant() + "中" : fullLengthName + "y");
+
+                    Assert.That(slot?.Name, Is.EqualTo(fullLengthName));
+                }
+                finally
+                {
+                    await DropSlotIfExists(c, fullLengthName);
+                }
+            }, $"{nameof(ReadReplicationSlot_returns_the_truncated_slot_name)}_{uppercaseWithNonAsciiTail}");
+    }
+
     static IAsyncEnumerator<ReplicationMessage> StartReplication(
         TConnection connection, string slotName, NpgsqlTypes.NpgsqlLogSequenceNumber walLocation, CancellationToken cancellationToken)
         => IsPhysical

@@ -128,21 +128,55 @@ static class Statics
 
             return true;
         }
+    }
 
-        static string FoldName(string name)
+    // Lowercases A-Z, as the server does with unquoted identifiers
+    static string FoldName(string name)
+    {
+        if (name.AsSpan().IndexOfAnyInRange('A', 'Z') < 0)
+            return name;
+
+        return string.Create(name.Length, name, static (span, name) =>
         {
-            if (name.AsSpan().IndexOfAnyInRange('A', 'Z') < 0)
-                return name;
-
-            return string.Create(name.Length, name, static (span, name) =>
+            for (var i = 0; i < span.Length; i++)
             {
-                for (var i = 0; i < span.Length; i++)
-                {
-                    var c = name[i];
-                    span[i] = c is >= 'A' and <= 'Z' ? (char)(c + ('a' - 'A')) : c;
-                }
-            });
+                var c = name[i];
+                span[i] = c is >= 'A' and <= 'Z' ? (char)(c + ('a' - 'A')) : c;
+            }
+        });
+    }
+
+    /// <summary>
+    /// Returns the name the server reads from a result of <see cref="QuoteName"/>: a quoted identifier without its quotes. An
+    /// unquoted one, an identifier with non-ASCII letters, gets A-Z lowercased like the server does it. The server may also
+    /// fold its non-ASCII letters, as its encoding and locale say, but slot names consist of a-z, 0-9 and _ only, so such a
+    /// name can only find a slot if its non-ASCII letters are cut off.
+    /// </summary>
+    internal static string UnquoteName(string quotedName)
+        => quotedName.Length >= 2 && quotedName[0] == '"'
+            ? quotedName.Substring(1, quotedName.Length - 2).Replace("\"\"", "\"")
+            : FoldName(quotedName);
+
+    /// <summary>
+    /// Truncates an identifier to the given number of UTF-8 bytes without splitting a character. A physical walsender cuts
+    /// identifiers that are longer than max_identifier_length after that many bytes, since its encoding is SQL_ASCII
+    /// (truncate_identifier, pg_mbcliplen), but if that splits a character, its notice about the truncation isn't valid in the
+    /// client encoding UTF8, and the command fails (pg_server_to_any). So when the command succeeds, the server read the name
+    /// this returns.
+    /// </summary>
+    internal static string TruncateIdentifier(string identifier, int maxBytes)
+    {
+        var bytes = 0;
+        var chars = 0;
+        foreach (var rune in identifier.EnumerateRunes())
+        {
+            if (bytes + rune.Utf8SequenceLength > maxBytes)
+                break;
+            bytes += rune.Utf8SequenceLength;
+            chars += rune.Utf16SequenceLength;
         }
+
+        return chars == identifier.Length ? identifier : identifier[..chars];
     }
 
     // The whitespace the replication command scanner skips between tokens (repl_scanner.l). \v only counts as whitespace
