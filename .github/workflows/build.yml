@@ -18,7 +18,6 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  global_json_file: './global.json'
   postgis_version: 3
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
   # Windows comes with PG pre-installed, and defines the PGPASSWORD environment variable. Remove it as it interferes

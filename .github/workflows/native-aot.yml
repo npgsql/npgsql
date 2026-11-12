@@ -18,7 +18,6 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  global_json_file: './global.json'
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
   AOT_Compat: |
     param([string]$targetFramework)
