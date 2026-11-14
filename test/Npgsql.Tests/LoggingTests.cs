@@ -296,7 +296,6 @@ public class LoggingTests : TestBase
             await server.ExpectExtendedQuery();
             await server
                 .WriteParameterStatus("TimeZone", "Europe/Berlin")
-                .WriteParameterStatus("TimeZone", "Europe/Berlin")
                 .WriteParameterStatus("scram_iterations", "4096")
                 .WriteParameterStatus("session_authorization", "npgsql_tests")
                 .WriteScalarResponseAndFlush(1);
