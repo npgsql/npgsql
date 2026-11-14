@@ -3024,6 +3024,12 @@ public sealed partial class NpgsqlConnector
         var name = TextEncoding.GetString(rawName);
         var value = TextEncoding.GetString(rawValue);
 
+        LogMessages.ReceivedParameterStatus(
+            ConnectionLogger,
+            name,
+            LoggingConfiguration.IsParameterLoggingEnabled || name is not ("scram_iterations" or "session_authorization") ? value : "?",
+            Id);
+
         PostgresParameters[name] = value;
 
         switch (name)
