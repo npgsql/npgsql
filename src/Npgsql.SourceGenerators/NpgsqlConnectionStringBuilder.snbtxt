@@ -54,11 +54,7 @@ namespace Npgsql
                     {{~ else ~}}
                     {{ p.name }} = {{ p.default_value }};
                     {{~ end ~}}
-                    {{~ if p.type_name != "String" ~}}
                     base.Remove(canonicalName);
-                    {{~ else ~}}
-                    // String property setters call SetValue, which itself calls base.Remove().
-                    {{~ end ~}}
                     return removed;
                 case GeneratedAction.Set:
                 {{~ if p.is_enum ~}}
