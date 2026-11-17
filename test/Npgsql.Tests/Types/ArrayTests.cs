@@ -1,12 +1,18 @@
 using System;
+using System.Buffers.Binary;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Data;
 using System.Diagnostics;
+using System.IO;
 using System.Text;
 using System.Threading.Tasks;
+using Npgsql.BackendMessages;
+using Npgsql.Internal;
 using Npgsql.Internal.Converters;
+using Npgsql.Internal.Postgres;
+using Npgsql.Tests.Support;
 using NpgsqlTypes;
 using NUnit.Framework;
 using static Npgsql.Tests.TestUtil;
@@ -524,5 +530,75 @@ CREATE DOMAIN pg_temp.int_array_2d  AS int[][] CHECK(array_length(VALUE, 2) = 2)
         await using var dataSource = dataSourceBuilder.Build();
 
         await AssertType(dataSource, new[] { 1, 2, 3 }, "{1,2,3}", "integer[]");
+    }
+
+    [Test, Description("Array mappings matched through a subtype predicate must not allocate the requested array type, its runtime element type cannot hold the converter's results")]
+    public async Task GetFieldValue_array_of_stream_subtype_throws()
+    {
+        await using var conn = await OpenConnectionAsync();
+        await using var cmd = new NpgsqlCommand("SELECT ARRAY[decode('0102', 'hex')]", conn);
+        await using var reader = await cmd.ExecuteReaderAsync();
+        await reader.ReadAsync();
+
+        Assert.That(() => reader.GetFieldValue<MemoryStream[]>(0), Throws.TypeOf<InvalidCastException>());
+        // The canonical element type still works.
+        var streams = reader.GetFieldValue<Stream[]>(0);
+        Assert.That(streams, Has.Length.EqualTo(1));
+    }
+
+    [Test, Description("A zero-length dimension makes the whole array empty, trailing element data must not be written into the allocation")]
+    public async Task Read_array_with_zero_length_dimension([Values(true, false)] bool withTrailingElements)
+    {
+        await using var postmasterMock = PgPostmasterMock.Start(ConnectionString);
+        await using var dataSource = CreateDataSource(postmasterMock.ConnectionString);
+        await using var conn = await dataSource.OpenConnectionAsync();
+
+        var int4Oid = PostgresMinimalDatabaseInfo.DefaultTypeCatalog.GetOid(DataTypeNames.Int4).Value;
+        var int4ArrayOid = PostgresMinimalDatabaseInfo.DefaultTypeCatalog.GetOid(DataTypeNames.Int4.ToArrayName()).Value;
+
+        // Binary array payload declaring dimensions [0, 2], optionally followed by two int4 elements.
+        // The trailing-element shape is malformed, PostgreSQL never produces it, a buggy or malicious server can.
+        var payload = new byte[7 * sizeof(int) + (withTrailingElements ? 2 * 2 * sizeof(int) : 0)];
+        var offset = 0;
+        WriteInt(2); // Dimensions
+        WriteInt(0); // Flags
+        WriteInt((int)int4Oid);
+        WriteInt(0); WriteInt(1); // Dimension 0: length 0, lower bound 1
+        WriteInt(2); WriteInt(1); // Dimension 1: length 2, lower bound 1
+        if (withTrailingElements)
+        {
+            WriteInt(sizeof(int)); WriteInt(42); // Element 0
+            WriteInt(sizeof(int)); WriteInt(42); // Element 1
+        }
+
+        var pgMock = await postmasterMock.WaitForServerConnection();
+        await pgMock
+            .WriteParseComplete()
+            .WriteBindComplete()
+            .WriteRowDescription(new FieldDescription(int4ArrayOid))
+            .WriteDataRow(payload)
+            .WriteCommandComplete()
+            .WriteReadyForQuery()
+            .FlushAsync();
+
+        await using var cmd = new NpgsqlCommand("SELECT zero_length_dimension_array", conn);
+        await using var reader = await cmd.ExecuteReaderAsync();
+        await reader.ReadAsync();
+
+        if (withTrailingElements)
+            Assert.That(() => reader.GetFieldValue<int[,]>(0), Throws.TypeOf<InvalidCastException>().With.Message.Contains("Malformed"));
+        else
+        {
+            var array = reader.GetFieldValue<int[,]>(0);
+            Assert.That(array.Length, Is.Zero);
+            Assert.That(array.GetLength(0), Is.Zero);
+            Assert.That(array.GetLength(1), Is.EqualTo(2));
+        }
+
+        void WriteInt(int value)
+        {
+            BinaryPrimitives.WriteInt32BigEndian(payload.AsSpan(offset), value);
+            offset += sizeof(int);
+        }
     }
 }

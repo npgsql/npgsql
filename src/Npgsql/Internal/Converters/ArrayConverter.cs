@@ -79,19 +79,33 @@ abstract class ArrayConverter<T> : PgStreamingConverter<T> where T : notnull
         // When the effective array type's element type differs from TElement (e.g. IntEnum[] with TElement=int,
         // or IntEnum?[] with TElement=int?), CreateCollection uses Array.CreateInstanceFromArrayType to produce
         // the correctly-typed array. Per-element access is a ref-byte-cast over the actual array's data
-        // reference at the row-major flat index — sound for layout-equivalent blittable value-type element
-        // pairs (the resolver gates this at call site), since sizeof(TElement?) matches the actual slot
-        // stride. The cast is on the element slot, not the array instance, so we don't assume the array's
-        // MethodTable matches TElement?[]; that's the part `Unsafe.As<TElement?[]>(actualArray)` would have
-        // gotten wrong for the Nullable<>[] case (no CLR variance through Nullable).
+        // reference at the row-major flat index — sound only for layout-equivalent blittable value-type
+        // element pairs, since sizeof(TElement?) matches the actual slot stride. The cast is on the element
+        // slot, not the array instance, so we don't assume the array's MethodTable matches TElement?[];
+        // that's the part `Unsafe.As<TElement?[]>(actualArray)` would have gotten wrong for the Nullable<>[]
+        // case (no CLR variance through Nullable).
+        // The pairing is enforced here rather than at the resolver: mappings matched through a type predicate
+        // (e.g. Stream subtypes) substitute the requested type into mapping.Type, so effectiveType can also
+        // arrive as an arbitrary reference-type array like MemoryStream[] with TElement=Stream. Those must
+        // keep the canonical TElement?[] allocation — storing through an unchecked slot ref would plant
+        // elements the array's runtime type doesn't allow — and fail the user's cast as before.
         readonly Type? _effectiveType =
-            effectiveType is { IsArray: true } && effectiveType.GetElementType() != typeof(TElement) ? effectiveType : null;
+            effectiveType is { IsArray: true } && effectiveType.GetElementType() is { } effectiveElement
+            && effectiveElement != typeof(TElement) && IsEnumUnderlyingElementPair(effectiveElement)
+                ? effectiveType : null;
+
+        static bool IsEnumUnderlyingElementPair(Type effectiveElement)
+            => Nullable.GetUnderlyingType(typeof(TElement)) is { } underlyingOfT
+                ? Nullable.GetUnderlyingType(effectiveElement) is { IsEnum: true } effectiveEnum
+                    && effectiveEnum.GetEnumUnderlyingType() == underlyingOfT
+                : effectiveElement.IsEnum && effectiveElement.GetEnumUnderlyingType() == typeof(TElement);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         static ref TElement? GetSlot(object collection, IterationIndices indices)
         {
             Debug.Assert(indices.Rank > 0);
             Debug.Assert(collection is Array);
+            Debug.Assert((ulong)indices.IndicesSum < (ulong)Unsafe.As<Array>(collection).LongLength);
             ref var first = ref Unsafe.As<byte, TElement?>(ref MemoryMarshal.GetArrayDataReference(Unsafe.As<Array>(collection)));
             return ref Unsafe.Add(ref first, (nint)indices.IndicesSum);
         }

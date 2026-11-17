@@ -234,8 +234,16 @@ readonly struct ArrayConverterCore(
         }
 
         var collection = elemOps.CreateCollection(dimensionLengthsSpan);
-        if (dimensions is 0 || lastDimension is 0)
+        // Any zero-length dimension makes the entire array empty, even when later dimensions are non-zero
+        // (e.g. wire data declaring [0, 2]). The element loop below runs at least once and writes through
+        // unchecked slot refs, so it must not be entered for a zero-length allocation. Element data behind
+        // an empty header is malformed - PostgreSQL never produces it - so it's surfaced instead of ignored.
+        if (dimensions is 0 || lastDimension is 0 || dimensionLengthsSpan.Contains(0))
+        {
+            if (reader.CurrentRemaining > 0)
+                ThrowHelper.ThrowInvalidCastException("Malformed binary array data, an empty array header was followed by element data.");
             return collection;
+        }
 
         if (expectedDimensions is not null && dimensions != expectedDimensions)
             ThrowHelper.ThrowInvalidCastException(
