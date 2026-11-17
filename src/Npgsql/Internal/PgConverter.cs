@@ -177,7 +177,7 @@ public abstract class PgConverter
             return;
         }
 
-        if (RuntimeFeature.IsDynamicCodeSupported && typeof(T).IsValueType && default(T) is null &&
+        if (typeof(T).IsValueType && default(T) is null &&
             this is Converters.IEnumUnderlyingConverter && TryWriteAsNullableEnumUnderlying(writer, value))
             return;
 
@@ -198,41 +198,66 @@ public abstract class PgConverter
             return new();
         }
 
-        if (RuntimeFeature.IsDynamicCodeSupported && typeof(T).IsValueType && default(T) is null &&
+        if (typeof(T).IsValueType && default(T) is null &&
             this is Converters.IEnumUnderlyingConverter && TryWriteAsNullableEnumUnderlying(writer, value))
             return new();
 
         return WriteAsObjectAsync(writer, value, cancellationToken);
     }
 
-    // Keep both the source and underlying types visible before calling the typed converter.
-    // The casts enforce compatibility without reflecting over the source enum type. Enum
+    // Keep both the source and underlying types visible before calling the typed converter. Enum
     // converters are buffered, so this path also serves asynchronous writes synchronously.
+    //
+    // Soundness of the reinterpret: Nullable<TEnum> and Nullable<TUnderlying> are layout identical.
+    // An enum's representation is exactly its underlying type's (ECMA-335 II.14.3), and Nullable<T>
+    // layout is a runtime ABI rather than ordinary auto layout - hasValue sits at offset 0 and value
+    // at align(T), an offset every runtime bakes into its own nullable box/unbox machinery (CoreCLR
+    // captures it in the MethodTable via SetNullableDetails, NativeAOT encodes it in EEType flags as
+    // a power of two, Mono derives it from the same per-instantiation field layout). Since
+    // align(TEnum) == align(TUnderlying), the two instantiations cannot diverge. The nullable enum
+    // array path relies on the same equivalence for its element slots. The debug assert cross-checks
+    // the reinterpret against the layout-agnostic boxing extraction on every runtime running tests,
+    // and BitCast itself throws if the sizes ever disagree.
     [MethodImpl(MethodImplOptions.NoInlining)]
     bool TryWriteAsNullableEnumUnderlying<T>(PgWriter writer, T value)
     {
         Debug.Assert(this is Converters.IEnumUnderlyingConverter);
 
-        if (TypeToConvert == typeof(int?))
-            UnsafeAs<int?>().Write(writer, value is null ? null : (int)(object)value);
-        else if (TypeToConvert == typeof(long?))
-            UnsafeAs<long?>().Write(writer, value is null ? null : (long)(object)value);
-        else if (TypeToConvert == typeof(short?))
-            UnsafeAs<short?>().Write(writer, value is null ? null : (short)(object)value);
-        else if (TypeToConvert == typeof(byte?))
-            UnsafeAs<byte?>().Write(writer, value is null ? null : (byte)(object)value);
-        else if (TypeToConvert == typeof(sbyte?))
-            UnsafeAs<sbyte?>().Write(writer, value is null ? null : (sbyte)(object)value);
-        else if (TypeToConvert == typeof(ushort?))
-            UnsafeAs<ushort?>().Write(writer, value is null ? null : (ushort)(object)value);
-        else if (TypeToConvert == typeof(uint?))
-            UnsafeAs<uint?>().Write(writer, value is null ? null : (uint)(object)value);
-        else if (TypeToConvert == typeof(ulong?))
-            UnsafeAs<ulong?>().Write(writer, value is null ? null : (ulong)(object)value);
+        if (Nullable.GetUnderlyingType(typeof(T)) is not { IsEnum: true } enumType)
+            return false;
+        var underlying = enumType.GetEnumUnderlyingType();
+
+        if (underlying == typeof(int) && TypeToConvert == typeof(int?))
+            UnsafeAs<int?>().Write(writer, BitCastToNullableUnderlying<int>(value));
+        else if (underlying == typeof(long) && TypeToConvert == typeof(long?))
+            UnsafeAs<long?>().Write(writer, BitCastToNullableUnderlying<long>(value));
+        else if (underlying == typeof(short) && TypeToConvert == typeof(short?))
+            UnsafeAs<short?>().Write(writer, BitCastToNullableUnderlying<short>(value));
+        else if (underlying == typeof(byte) && TypeToConvert == typeof(byte?))
+            UnsafeAs<byte?>().Write(writer, BitCastToNullableUnderlying<byte>(value));
+        else if (underlying == typeof(sbyte) && TypeToConvert == typeof(sbyte?))
+            UnsafeAs<sbyte?>().Write(writer, BitCastToNullableUnderlying<sbyte>(value));
+        else if (underlying == typeof(ushort) && TypeToConvert == typeof(ushort?))
+            UnsafeAs<ushort?>().Write(writer, BitCastToNullableUnderlying<ushort>(value));
+        else if (underlying == typeof(uint) && TypeToConvert == typeof(uint?))
+            UnsafeAs<uint?>().Write(writer, BitCastToNullableUnderlying<uint>(value));
+        else if (underlying == typeof(ulong) && TypeToConvert == typeof(ulong?))
+            UnsafeAs<ulong?>().Write(writer, BitCastToNullableUnderlying<ulong>(value));
         else
             return false;
 
         return true;
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        static TUnderlying? BitCastToNullableUnderlying<TUnderlying>(T value) where TUnderlying : struct
+        {
+            var converted = Unsafe.BitCast<T, TUnderlying?>(value);
+            Debug.Assert(converted is null == value is null,
+                "Nullable<TEnum> and Nullable<TUnderlying> disagree on the hasValue offset");
+            Debug.Assert(converted is null || converted.GetValueOrDefault().Equals((TUnderlying)(object)value!),
+                "Nullable<TEnum> and Nullable<TUnderlying> disagree on the value offset");
+            return converted;
+        }
     }
 
     /// Checks whether <paramref name="value"/> is considered a database null by this converter.
