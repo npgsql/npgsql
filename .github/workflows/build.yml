@@ -320,7 +320,7 @@ jobs:
         wait-all: true
 
       - name: Test
-        run: dotnet test -c ${{ matrix.config }} -f ${{ matrix.test_tfm }} --no-build --logger "GitHubActions;report-warnings=false" --blame-crash --blame-hang-timeout 30s
+        run: dotnet test -c ${{ matrix.config }} -f ${{ matrix.test_tfm }} --no-build --no-progress --crashdump --hangdump --hangdump-timeout 30s
         shell: bash
 
       - name: Upload Test Hang Dumps
