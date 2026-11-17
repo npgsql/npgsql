@@ -90,12 +90,14 @@ sealed partial class NodaTimeTypeInfoResolverFactory
             mappings.AddType<DateInterval[]>(DateMultirangeDataTypeName,
                 static (options, mapping, _) =>
                     mapping.CreateInfo(options, CreateArrayMultirangeConverter(new DateIntervalConverter(
+                        CreateRangeConverter(new MaybeInfiniteLocalDateConverter(), options),
                         CreateRangeConverter(new LocalDateConverter(options.EnableDateTimeInfinityConversions), options),
                         options.EnableDateTimeInfinityConversions), options)),
                 isDefault: true);
             mappings.AddType<List<DateInterval>>(DateMultirangeDataTypeName,
                 static (options, mapping, _) =>
                     mapping.CreateInfo(options, CreateListMultirangeConverter(new DateIntervalConverter(
+                        CreateRangeConverter(new MaybeInfiniteLocalDateConverter(), options),
                         CreateRangeConverter(new LocalDateConverter(options.EnableDateTimeInfinityConversions), options),
                         options.EnableDateTimeInfinityConversions), options)));
             mappings.AddType<NpgsqlRange<LocalDate>[]>(DateMultirangeDataTypeName,

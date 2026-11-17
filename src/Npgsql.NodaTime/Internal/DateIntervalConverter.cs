@@ -3,11 +3,15 @@ using System.Threading;
 using System.Threading.Tasks;
 using NodaTime;
 using Npgsql.Internal;
+using Npgsql.NodaTime.Properties;
 using NpgsqlTypes;
 
 namespace Npgsql.NodaTime.Internal;
 
-public class DateIntervalConverter(PgConverter<NpgsqlRange<LocalDate>> rangeConverter, bool dateTimeInfinityConversions)
+public class DateIntervalConverter(
+    PgConverter<NpgsqlRange<MaybeInfiniteLocalDate>> readRangeConverter,
+    PgConverter<NpgsqlRange<LocalDate>> writeRangeConverter,
+    bool dateTimeInfinityConversions)
     : PgStreamingConverter<DateInterval>
 {
     public override DateInterval Read(PgReader reader)
@@ -19,27 +23,47 @@ public class DateIntervalConverter(PgConverter<NpgsqlRange<LocalDate>> rangeConv
     async ValueTask<DateInterval> Read(bool async, PgReader reader, CancellationToken cancellationToken)
     {
         var range = async
-            ? await rangeConverter.ReadAsync(reader, cancellationToken).ConfigureAwait(false)
+            ? await readRangeConverter.ReadAsync(reader, cancellationToken).ConfigureAwait(false)
             // ReSharper disable once MethodHasAsyncOverloadWithCancellation
-            : rangeConverter.Read(reader);
+            : readRangeConverter.Read(reader);
 
         if (range.IsEmpty)
             throw new InvalidCastException("Cannot read an empty range as a NodaTime DateInterval.");
 
+        var lowerBound = range.LowerBound;
+        var lowerBoundValue = lowerBound.Value;
         var upperBound = range.UpperBound;
+        var upperBoundValue = upperBound.Value;
 
-        if (upperBound != LocalDate.MaxIsoValue || !dateTimeInfinityConversions)
-            upperBound -= Period.FromDays(1);
+        if (range.LowerBoundInfinite || lowerBound.IsInfinite)
+        {
+            lowerBoundValue = dateTimeInfinityConversions
+                ? LocalDate.MinIsoValue
+                : throw new InvalidCastException(NpgsqlNodaTimeStrings.CannotReadInfinityValue);
+        }
 
-        return new(range.LowerBound, upperBound);
+        if (range.UpperBoundInfinite || upperBound.IsInfinite)
+        {
+            upperBoundValue = dateTimeInfinityConversions
+                ? LocalDate.MaxIsoValue
+                : throw new InvalidCastException(NpgsqlNodaTimeStrings.CannotReadInfinityValue);
+        }
+        else
+        {
+            // PostgreSQL normalizes ranges to [,) format
+            // Since DateInterval implies [,], subtract a single day from the upper bound
+            upperBoundValue -= Period.FromDays(1);
+        }
+
+        return new(lowerBoundValue, upperBoundValue);
     }
 
     protected override Size BindValue(in BindContext context, DateInterval value, ref object? writeState)
-        => rangeConverter.Bind(context, new NpgsqlRange<LocalDate>(value.Start, value.End), ref writeState);
+        => writeRangeConverter.Bind(context, new NpgsqlRange<LocalDate>(value.Start, value.End), ref writeState);
 
     public override void Write(PgWriter writer, DateInterval value)
-        => rangeConverter.Write(writer, new NpgsqlRange<LocalDate>(value.Start, value.End));
+        => writeRangeConverter.Write(writer, new NpgsqlRange<LocalDate>(value.Start, value.End));
 
     public override ValueTask WriteAsync(PgWriter writer, DateInterval value, CancellationToken cancellationToken = default)
-        => rangeConverter.WriteAsync(writer, new NpgsqlRange<LocalDate>(value.Start, value.End), cancellationToken);
+        => writeRangeConverter.WriteAsync(writer, new NpgsqlRange<LocalDate>(value.Start, value.End), cancellationToken);
 }

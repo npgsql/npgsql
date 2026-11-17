@@ -54,6 +54,7 @@ sealed partial class NodaTimeTypeInfoResolverFactory
             mappings.AddType<DateInterval>(DateRangeDataTypeName,
                 static (options, mapping, _) =>
                     mapping.CreateInfo(options, new DateIntervalConverter(
+                        CreateRangeConverter(new MaybeInfiniteLocalDateConverter(), options),
                         CreateRangeConverter(new LocalDateConverter(options.EnableDateTimeInfinityConversions), options),
                         options.EnableDateTimeInfinityConversions)), isDefault: true);
             mappings.AddStructType<NpgsqlRange<LocalDate>>(DateRangeDataTypeName,
