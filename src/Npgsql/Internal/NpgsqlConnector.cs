@@ -610,10 +610,9 @@ public sealed partial class NpgsqlConnector
         // There's no kerberos library installed, so no point in going further
         if (!hasKerberosLibrary)
         {
-            if (isRequired)
-                throw new NpgsqlException("Unable to load native library to negotiate GSS encryption");
-
-            return GssEncryptionResult.GetCredentialFailure;
+            return !isRequired
+                ? GssEncryptionResult.GetCredentialFailure
+                : throw new NpgsqlException("Unable to load native library to negotiate GSS encryption");
         }
 
         ConnectionLogger.LogTrace("Negotiating GSS encryption");
