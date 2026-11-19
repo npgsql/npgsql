@@ -481,6 +481,31 @@ public class NodaTimeTests : TestBase, IDisposable
             skipArrayCheck: true);
     }
 
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/6688")]
+    public async Task Empty_daterange_as_DateInterval_throws()
+    {
+        await using var conn = await OpenConnectionAsync();
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = "SELECT '(2002-03-04,2002-03-05)'::daterange";
+
+        await using var reader = await cmd.ExecuteReaderAsync();
+        await reader.ReadAsync();
+
+        var range = reader.GetFieldValue<NpgsqlRange<DateOnly>>(0);
+        Assert.That(range.IsEmpty, Is.True);
+
+        var ex = Assert.Throws<InvalidCastException>(() => reader.GetFieldValue<DateInterval>(0));
+        Assert.That(ex.Message, Is.EqualTo("Cannot read an empty range as a NodaTime DateInterval."));
+    }
+
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/6688")]
+    public Task Almost_max_value_DateInterval_roundtrip()
+        => AssertType(
+            new DateInterval(new(2002, 3, 4), new(9999, 12, 30)),
+            "[2002-03-04,9999-12-31)",
+            "daterange",
+            dataTypeInference: DataTypeInference.Nothing, skipArrayCheck: true);
+
     [Test]
     public async Task Daterange_as_NpgsqlRange_of_LocalDate()
     {

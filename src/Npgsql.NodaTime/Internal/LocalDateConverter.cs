@@ -42,3 +42,28 @@ sealed class LocalDateConverter(bool dateTimeInfinityConversions) : PgBufferedCo
         writer.WriteInt32(totalDaysSinceEra - 730119);
     }
 }
+
+public readonly struct MaybeInfiniteLocalDate(LocalDate value, bool isInfinite = false)
+{
+    public LocalDate Value { get; } = value;
+
+    public bool IsInfinite { get; } = isInfinite;
+}
+
+sealed class MaybeInfiniteLocalDateConverter : PgBufferedConverter<MaybeInfiniteLocalDate>
+{
+    public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
+        // Specific requirements do not matter here, we return it because RangeConverter requires it
+        => ConverterDescriptor.Invariant with { BufferRequirements = BufferRequirements.CreateFixedSize(sizeof(int)) };
+
+    public override MaybeInfiniteLocalDate Read(PgReader reader)
+        => reader.ReadInt32() switch
+        {
+            int.MaxValue => new(LocalDate.MaxIsoValue, isInfinite: true),
+            int.MinValue => new(LocalDate.MinIsoValue, isInfinite: true),
+            var value => new(new LocalDate().PlusDays(value + 730119))
+        };
+
+    public override void Write(PgWriter writer, MaybeInfiniteLocalDate value)
+        => throw new NotImplementedException();
+}

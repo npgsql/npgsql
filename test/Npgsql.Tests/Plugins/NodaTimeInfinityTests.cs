@@ -42,6 +42,32 @@ public class NodaTimeInfinityTests : TestBase
             "datemultirange", dataTypeInference: DataTypeInference.Nothing, skipArrayCheck: true);
     }
 
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/6688")]
+    public async Task DateRange_with_infinite_bounds()
+    {
+        await using var conn = await OpenConnectionAsync();
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = "SELECT '(-infinity,2002-03-04)'::daterange, '(,2002-03-04)'::daterange, '(2002-03-04,infinity)'::daterange, '(2002-03-04,)'::daterange";
+
+        await using var reader = await cmd.ExecuteReaderAsync();
+        await reader.ReadAsync();
+
+        if (Statics.DisableDateTimeInfinityConversions)
+        {
+            Assert.That(() => reader[0], Throws.Exception.TypeOf<InvalidCastException>());
+            Assert.That(() => reader[1], Throws.Exception.TypeOf<InvalidCastException>());
+            Assert.That(() => reader[2], Throws.Exception.TypeOf<InvalidCastException>());
+            Assert.That(() => reader[3], Throws.Exception.TypeOf<InvalidCastException>());
+        }
+        else
+        {
+            Assert.That(reader.GetFieldValue<DateInterval>(0), Is.EqualTo(new DateInterval(LocalDate.MinIsoValue, new LocalDate(2002, 3, 3))));
+            Assert.That(reader.GetFieldValue<DateInterval>(1), Is.EqualTo(new DateInterval(LocalDate.MinIsoValue, new LocalDate(2002, 3, 3))));
+            Assert.That(reader.GetFieldValue<DateInterval>(2), Is.EqualTo(new DateInterval(new LocalDate(2002, 3, 5), LocalDate.MaxIsoValue)));
+            Assert.That(reader.GetFieldValue<DateInterval>(3), Is.EqualTo(new DateInterval(new LocalDate(2002, 3, 5), LocalDate.MaxIsoValue)));
+        }
+    }
+
     [Test]
     public async Task Timestamptz_read_values()
     {
