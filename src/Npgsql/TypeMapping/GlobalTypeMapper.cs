@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
+using System.Threading;
 using Npgsql.Internal;
 using Npgsql.Internal.Postgres;
 using Npgsql.Internal.ResolverFactories;
@@ -13,7 +14,7 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
 {
     readonly UserTypeMapper _userTypeMapper = new();
     readonly List<PgTypeInfoResolverFactory> _pluginResolverFactories = [];
-    readonly object _sync = new();
+    readonly Lock _sync = new();
     PgTypeInfoResolverFactory[] _typeMappingResolvers = [];
 
     internal IEnumerable<PgTypeInfoResolverFactory> GetPluginResolverFactories()
