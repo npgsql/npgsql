@@ -38,4 +38,4 @@ git push upstream :hotfix/9.0.2
 
 ## Update API documentation
 
-[Our documentation site](https://www.npgsql.org) automatically publishes API docs for Npgsql and EFCore.PG from the `docs` branches in each of those two repos. After publishing a major version, you'll need to re-point that branch to the new version, so that API docs for that version are generated (`git reset --hard v9.0.0`). You'll then need to trigger a docs rebuild (you can just wait for the next time some small note needs to be updated etc.).
+[Our documentation site](https://www.npgsql.org) generates API docs from the `Npgsql` and `EFCore.PG` submodules in the [documentation repository](https://github.com/npgsql/doc). After publishing a major version, check out the release tag in the corresponding submodule and commit the updated submodule pointer in the documentation repository. Update the SDK in the documentation build workflow or the target framework in `docfx.json` if the new version requires it. Merging the documentation changes to `main` triggers a rebuild and publishes the updated site.

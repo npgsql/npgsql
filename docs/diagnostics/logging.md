@@ -38,7 +38,7 @@ By default, Npgsql logs command executions at the `Information` log level, as we
 
 ## ASP.NET and dependency injection
 
-If you're using ASP.NET, you can use the additional [Npgsql.DependencyInjection](https://www.nuget.org/packages/Npgsql.DependencyInjection) package, which provides seamless integration with dependency injection and logging:
+If you're using ASP.NET, use `AddNpgsqlDataSource()` to integrate with dependency injection and logging. This method is included in Npgsql starting with version 11. For earlier versions, add a reference to [Npgsql.DependencyInjection](https://www.nuget.org/packages/Npgsql.DependencyInjection).
 
 ```csharp
 var builder = WebApplication.CreateBuilder(args);
