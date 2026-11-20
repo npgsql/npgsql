@@ -551,6 +551,21 @@ public class DateTimeTests : TestBase
     public Task Interval_with_months_cannot_read_as_TimeSpan()
         => AssertTypeUnsupportedRead<TimeSpan, InvalidCastException>("1 month 2 days", "interval");
 
+    [TestCase("300000000 hours")]
+    [TestCase("-300000000 hours")]
+    [TestCase("20000000 days")]
+    public Task Interval_outside_TimeSpan_range_cannot_read_as_TimeSpan(string sqlLiteral)
+        => AssertTypeUnsupportedRead<TimeSpan, OverflowException>(sqlLiteral, "interval");
+
+    [Test]
+    public async Task Interval_components_that_cancel_before_overflow_can_read_as_TimeSpan()
+    {
+        await using var connection = await OpenConnectionAsync();
+        await using var command = connection.CreateCommand();
+        command.CommandText = "SELECT interval '300000000 hours -12500000 days'";
+        Assert.That(await command.ExecuteScalarAsync(), Is.EqualTo(TimeSpan.Zero));
+    }
+
     #endregion
 
     protected override async ValueTask<NpgsqlConnection> OpenConnectionAsync()
