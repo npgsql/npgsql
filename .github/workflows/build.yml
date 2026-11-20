@@ -41,7 +41,7 @@ jobs:
             config: Debug
             test_tfm: net11.0
           - os: macos-26
-            pg_major: 16
+            pg_major: 19
             config: Release
             test_tfm: net11.0
           - os: windows-2025
