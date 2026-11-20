@@ -65,7 +65,9 @@ public readonly struct TypeInfoMapping(Type type, string dataTypeName, TypeInfoF
 
     public TypeInfoFactory Factory { get; init; } = factory;
     public Type Type { get; init; } = type;
-    public string DataTypeName { get; init; } = Postgres.DataTypeName.NormalizeName(dataTypeName);
+    public string DataTypeName { get; init; } = Postgres.DataTypeName.IsFullyQualified(dataTypeName.AsSpan())
+        ? dataTypeName
+        : Postgres.DataTypeName.NormalizeName(dataTypeName);
 
     public MatchRequirement MatchRequirement { get; init; } = type == typeof(object) ? MatchRequirement.DataTypeName : MatchRequirement.All;
     public Func<Type?, bool>? TypeMatchPredicate { get; init; }
@@ -88,7 +90,9 @@ public readonly struct TypeInfoMapping(Type type, string dataTypeName, TypeInfoF
 
     public bool DataTypeNameEquals(string dataTypeName)
     {
-        var normalized = Postgres.DataTypeName.NormalizeName(dataTypeName);
+        var normalized = Postgres.DataTypeName.IsFullyQualified(dataTypeName.AsSpan())
+            ? dataTypeName
+            : Postgres.DataTypeName.NormalizeName(dataTypeName);
         return DataTypeNameEqualsCore(normalized);
     }
 
