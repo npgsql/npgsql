@@ -307,6 +307,30 @@ class RangeTests : TestBase
         Assert.That(result.ToString(), Is.EqualTo(input.Replace(" ", null)));
     }
 
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/6730")]
+    public void ToString_under_non_invariant_culture()
+    {
+        var savedCulture = CultureInfo.CurrentCulture;
+        try
+        {
+            CultureInfo.CurrentCulture = new CultureInfo("de-DE");
+
+            var decimalRange = new NpgsqlRange<decimal>(1.5m, true, 2.25m, false);
+            Assert.That(decimalRange.ToString(), Is.EqualTo("[1.5,2.25)"));
+            Assert.That(((IFormattable)decimalRange).ToString(null, CultureInfo.InvariantCulture), Is.EqualTo("[1.5,2.25)"));
+
+            var dateRange = new NpgsqlRange<DateOnly>(new DateOnly(2026, 7, 1), true, new DateOnly(2026, 7, 4), true);
+            Assert.That(dateRange.ToString(), Is.EqualTo("[2026-07-01,2026-07-04]"));
+
+            var dateTimeRange = new NpgsqlRange<DateTime>(new DateTime(2026, 7, 1, 10, 30, 0, 500), true, new DateTime(2026, 7, 4, 12, 0, 0), false);
+            Assert.That(dateTimeRange.ToString(), Is.EqualTo("[2026-07-01 10:30:00.500000,2026-07-04 12:00:00.000000)"));
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = savedCulture;
+        }
+    }
+
     [Theory]
     [TestCase("(1,1)", "empty")]
     [TestCase("[1,1)", "empty")]

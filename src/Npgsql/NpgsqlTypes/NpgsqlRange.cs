@@ -14,7 +14,7 @@ namespace NpgsqlTypes;
 /// <remarks>
 /// See: https://www.postgresql.org/docs/current/static/rangetypes.html
 /// </remarks>
-public readonly struct NpgsqlRange<T> : IEquatable<NpgsqlRange<T>>
+public readonly struct NpgsqlRange<T> : IEquatable<NpgsqlRange<T>>, IFormattable
 {
     // -----------------------------------------------------------------------------------------------
     // Regarding bitwise flag checks via @roji:
@@ -327,6 +327,10 @@ public readonly struct NpgsqlRange<T> : IEquatable<NpgsqlRange<T>>
 
     /// <inheritdoc />
     public override string ToString()
+        => ToString(null, CultureInfo.InvariantCulture);
+
+    /// <inheritdoc />
+    public string ToString(string? format, IFormatProvider? formatProvider)
     {
         if (IsEmpty)
             return EmptyLiteral;
@@ -336,16 +340,45 @@ public readonly struct NpgsqlRange<T> : IEquatable<NpgsqlRange<T>>
         sb.Append(LowerBoundIsInclusive ? LowerInclusiveBound : LowerExclusiveBound);
 
         if (!LowerBoundInfinite)
-            sb.Append(LowerBound);
+            AppendBound(sb, LowerBound, format, formatProvider);
 
         sb.Append(BoundSeparator);
 
         if (!UpperBoundInfinite)
-            sb.Append(UpperBound);
+            AppendBound(sb, UpperBound, format, formatProvider);
 
         sb.Append(UpperBoundIsInclusive ? UpperInclusiveBound : UpperExclusiveBound);
 
         return sb.ToString();
+    }
+
+    static void AppendBound(StringBuilder sb, T bound, string? format, IFormatProvider? formatProvider)
+    {
+        if (bound is null)
+            return;
+
+        formatProvider ??= CultureInfo.InvariantCulture;
+
+        if (string.IsNullOrEmpty(format))
+        {
+            switch (bound)
+            {
+                case DateTime dt:
+                    sb.Append(dt.ToString("yyyy-MM-dd HH:mm:ss.ffffff", formatProvider));
+                    return;
+                case DateOnly d:
+                    sb.Append(d.ToString("yyyy-MM-dd", formatProvider));
+                    return;
+                case DateTimeOffset dto:
+                    sb.Append(dto.ToString("yyyy-MM-dd HH:mm:ss.ffffffzzz", formatProvider));
+                    return;
+            }
+        }
+
+        if (bound is IFormattable formattable)
+            sb.Append(formattable.ToString(format, formatProvider));
+        else
+            sb.Append(bound.ToString());
     }
 
     // TODO: rewrite this to use ReadOnlySpan<char> for the 4.1 release
