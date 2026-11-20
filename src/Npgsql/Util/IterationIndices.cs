@@ -10,6 +10,9 @@ struct IterationIndices
 {
     long _indicesSum;
 
+    // Row-major flattened element index, maintained incrementally by TryAdvance. Equivalent to
+    // ArrayExtensions.GetFlattenedIndex(indices, lengths) on each step but without the per-element
+    // stride multiplication.
     public long IndicesSum => _indicesSum;
 
     public int Rank { get; private init; }
@@ -102,6 +105,18 @@ struct IterationIndices
                 Many = new int[dimensions],
             };
         }
+    }
+
+    // Copy of the proposed Array.GetFlattenedIndex (dotnet/runtime#125325) until it ships, kept as the
+    // single owner of the row-major stride formula. TryAdvance/IncrementOrCarry produce the same value
+    // incrementally as IndicesSum.
+    public static long GetFlattenedIndex(ReadOnlySpan<int> indices, ReadOnlySpan<int> lengths)
+    {
+        Debug.Assert(indices.Length == lengths.Length);
+        long flatIndex = 0;
+        for (var dim = 0; dim < indices.Length; dim++)
+            flatIndex = flatIndex * lengths[dim] + indices[dim];
+        return flatIndex;
     }
 
     static ref int GetIntRefFromLong(ref long value)
