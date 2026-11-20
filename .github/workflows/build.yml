@@ -32,12 +32,12 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-26.04]
-        pg_major: [18, 17, 16, 15, 14]
+        pg_major: [19, 18, 17, 16, 15]
         config: [Release]
         test_tfm: [net11.0]
         include:
           - os: ubuntu-26.04
-            pg_major: 18
+            pg_major: 19
             config: Debug
             test_tfm: net11.0
           - os: macos-26
@@ -45,22 +45,15 @@ jobs:
             config: Release
             test_tfm: net11.0
           - os: windows-2025
-            pg_major: 18
+            pg_major: 19
             config: Release
             test_tfm: net11.0
 
           # Minimal support TFM build
           - os: ubuntu-26.04
-            pg_major: 18
-            config: Release
-            test_tfm: net10.0
-
-           # PG prerelease build
-          - os: ubuntu-26.04
             pg_major: 19
             config: Release
-            test_tfm: net11.0
-            pg_prerelease: 'PG Prerelease'
+            test_tfm: net10.0
 
     outputs:
       is_release: ${{ steps.analyze_tag.outputs.is_release }}
@@ -70,7 +63,7 @@ jobs:
     # The NPGSQL_TEST_POSTGIS environment variable ensures that if PostGIS isn't installed,
     # the PostGIS tests fail and therefore fail the build.
     env:
-      NPGSQL_TEST_POSTGIS: ${{ !startsWith(matrix.os, 'windows') && !startsWith(matrix.os, 'macos') && matrix.pg_prerelease == '' }}
+      NPGSQL_TEST_POSTGIS: ${{ startsWith(matrix.os, 'ubuntu') }}
 
     steps:
       - name: Checkout
