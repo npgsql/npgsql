@@ -13,7 +13,7 @@ namespace Npgsql.Replication.PgOutput;
 /// </summary>
 public class ReplicationValue
 {
-    readonly NpgsqlReadBuffer _readBuffer;
+    NpgsqlReadBuffer _readBuffer = null!;
 
     /// <summary>
     /// The length of the value in bytes.
@@ -31,13 +31,14 @@ public class ReplicationValue
 
     PgReader PgReader => _readBuffer.PgReader;
 
-    internal ReplicationValue(NpgsqlConnector connector) => _readBuffer = connector.ReadBuffer;
+    internal ReplicationValue() {}
 
-    internal void Reset(TupleDataKind kind, int length, FieldDescription fieldDescription)
+    internal void Reset(TupleDataKind kind, int length, FieldDescription fieldDescription, NpgsqlReadBuffer readBuffer)
     {
         Kind = kind;
         Length = length;
         _fieldDescription = fieldDescription;
+        _readBuffer = readBuffer;
         _lastConversionContext = default;
         _isConsumed = false;
     }
