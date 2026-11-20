@@ -89,7 +89,7 @@ public class NotificationTests : TestBase
     public void Wait_with_prepended_message()
     {
         using var dataSource = CreateDataSource();
-        using (dataSource.OpenConnection()) {}  // A DISCARD ALL is now prepended in the connection's write buffer
+        using (dataSource.OpenConnection()) {}  // A reset message is now prepended in the connection's write buffer
         using var conn = dataSource.OpenConnection();
         Assert.That(conn.Wait(100), Is.EqualTo(false));
     }
