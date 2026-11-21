@@ -1,6 +1,7 @@
 using NpgsqlTypes;
 using NUnit.Framework;
 using System;
+using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
 using System.Linq;
@@ -202,6 +203,90 @@ CREATE DOMAIN {domainType} AS TEXT");
         Assert.That(domainRow["DataType"], Is.EqualTo("System.String"));
         Assert.That(domainRow["ProviderDbType"], Is.EqualTo((int)NpgsqlDbType.Text));
         Assert.That(domainRow["IsBestMatch"], Is.False);
+    }
+
+    // DbMetaDataColumnNames.CreateFormat: "Format string that represents how to add this column to a data definition
+    // statement, such as CREATE TABLE"; CreateParameters names the arguments it takes.
+    [Test]
+    public async Task DataTypes_CreateFormat_is_accepted_with_its_parameters()
+    {
+        await using var conn = await OpenConnectionAsync();
+        var dataTypes = await GetSchema(conn, DbMetaDataCollectionNames.DataTypes);
+
+        var rejected = new List<string>();
+        foreach (var row in dataTypes.Rows.Cast<DataRow>().Where(r => !string.IsNullOrEmpty((string)r["CreateParameters"])))
+        {
+            var column = string.Format((string)row["CreateFormat"], 6, 2);
+            try
+            {
+                await CreateTempTable(conn, $"c {column}");
+            }
+            catch (PostgresException e)
+            {
+                rejected.Add($"{row["TypeName"]}: {column}: {e.MessageText}");
+            }
+        }
+
+        Assert.That(rejected, Is.Empty);
+    }
+
+    // PostgreSQL decides which types take a modifier by pg_type.typmodin: varchar(10) and timestamptz(3) do, text does not.
+    [Test]
+    [TestCase("character varying", "VARCHAR({0})", "size")]
+    [TestCase("character", "BPCHAR({0})", "size")]
+    [TestCase("bit", "BIT({0})", "size")]
+    [TestCase("bit varying", "VARBIT({0})", "size")]
+    [TestCase("numeric", "NUMERIC({0},{1})", "precision, scale")]
+    [TestCase("time without time zone", "TIME({0})", "precision")]
+    [TestCase("time with time zone", "TIMETZ({0})", "precision")]
+    [TestCase("timestamp without time zone", "TIMESTAMP({0})", "precision")]
+    [TestCase("timestamp with time zone", "TIMESTAMPTZ({0})", "precision")]
+    [TestCase("interval", "INTERVAL({0})", "precision")]
+    [TestCase("text", "TEXT", "")]
+    [TestCase("integer", "INTEGER", "")]
+    [TestCase("character varying[]", "VARCHAR({0})[]", "size")]
+    [TestCase("text[]", "TEXT[]", "")]
+    public async Task DataTypes_CreateFormat_has_a_modifier_when_the_type_takes_one(string typeName, string createFormat, string createParameters)
+    {
+        await using var conn = await OpenConnectionAsync();
+        var dataTypes = await GetSchema(conn, DbMetaDataCollectionNames.DataTypes);
+
+        var row = dataTypes.Rows.Cast<DataRow>().Single(r => r["TypeName"].Equals(typeName));
+        Assert.That(row["CreateFormat"], Is.EqualTo(createFormat));
+        Assert.That(row["CreateParameters"], Is.EqualTo(createParameters));
+    }
+
+    // DbMetaDataColumnNames.DataType: "The name of the .NET Framework type of the data type". Arrays are left out, as
+    // GetFieldType reports System.Array for any array column.
+    [Test]
+    public async Task DataTypes_DataType_matches_the_type_read_for_types_with_a_modifier()
+    {
+        await using var conn = await OpenConnectionAsync();
+        var dataTypes = await GetSchema(conn, DbMetaDataCollectionNames.DataTypes);
+
+        var mismatched = new List<string>();
+        foreach (var row in dataTypes.Rows.Cast<DataRow>()
+                     .Where(r => !string.IsNullOrEmpty((string)r["CreateParameters"]) && !((string)r["TypeName"]).EndsWith("[]")))
+        {
+            var column = string.Format((string)row["CreateFormat"], 6, 2);
+            string table;
+            try
+            {
+                table = await CreateTempTable(conn, $"c {column}");
+            }
+            catch (PostgresException)
+            {
+                continue; // DataTypes_CreateFormat_is_accepted_with_its_parameters reports these
+            }
+
+            await using var cmd = new NpgsqlCommand($"SELECT c FROM {table}", conn);
+            await using var reader = await cmd.ExecuteReaderAsync();
+            var read = reader.GetFieldType(0).FullName;
+            if (read != (string)row["DataType"])
+                mismatched.Add($"{row["TypeName"]} ({column}): DataType {row["DataType"]}, read as {read}");
+        }
+
+        Assert.That(mismatched, Is.Empty);
     }
 
     enum TestEnum { A, B };
