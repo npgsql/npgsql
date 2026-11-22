@@ -1,4 +1,5 @@
 using System;
+using System.Buffers;
 using System.Globalization;
 using System.IO;
 using System.Text;
@@ -50,15 +51,33 @@ static class JsonNetJsonConverter
                 throw new InvalidCastException($"Unknown jsonb wire format version {version}");
         }
 
-        using var stream = reader.GetStream();
-        var mem = new MemoryStream();
-        if (async)
-            await stream.CopyToAsync(mem, Math.Min((int)stream.Length, 81920), cancellationToken).ConfigureAwait(false);
-        else
-            stream.CopyTo(mem);
-        mem.Position = 0;
-        using var textReader = new JsonTextReader(new StreamReader(mem, encoding));
-        return serializer.Deserialize(textReader, type);
+        // Json.NET only reads synchronously, so the value is fully read before deserializing it. When the value is
+        // already in the read buffer it is decoded from there, otherwise it is first read into a rented array.
+        var byteCount = reader.CurrentRemaining;
+        byte[]? rentedBytes = null;
+        if (!reader.TryReadBytes(byteCount, out ReadOnlyMemory<byte> bytes))
+        {
+            rentedBytes = ArrayPool<byte>.Shared.Rent(byteCount);
+            if (async)
+                await reader.ReadBytesAsync(rentedBytes.AsMemory(0, byteCount), cancellationToken).ConfigureAwait(false);
+            else
+                reader.ReadBytes(rentedBytes.AsSpan(0, byteCount));
+            bytes = rentedBytes.AsMemory(0, byteCount);
+        }
+
+        var rentedChars = ArrayPool<char>.Shared.Rent(encoding.GetMaxCharCount(byteCount));
+        try
+        {
+            var charCount = encoding.GetChars(bytes.Span, rentedChars);
+            using var textReader = new JsonTextReader(new CharArrayReader(rentedChars, charCount)) { ArrayPool = JsonArrayPool.Instance };
+            return serializer.Deserialize(textReader, type);
+        }
+        finally
+        {
+            ArrayPool<char>.Shared.Return(rentedChars);
+            if (rentedBytes is not null)
+                ArrayPool<byte>.Shared.Return(rentedBytes);
+        }
     }
 
     public static Size BindValue(bool jsonb, in BindContext context, Type type, JsonSerializer serializer, Encoding encoding, object? value, ref object? writeState)
@@ -106,5 +125,36 @@ static class JsonNetJsonConverter
             await writer.WriteBytesAsync(buffer.AsMemory(), cancellationToken).ConfigureAwait(false);
         else
             writer.WriteBytes(buffer.AsSpan());
+    }
+    sealed class CharArrayReader(char[] chars, int length) : TextReader
+    {
+        int _position;
+
+        public override int Peek() => _position < length ? chars[_position] : -1;
+
+        public override int Read() => _position < length ? chars[_position++] : -1;
+
+        public override int Read(char[] buffer, int index, int count) => Read(buffer.AsSpan(index, count));
+
+        public override int Read(Span<char> buffer)
+        {
+            var count = Math.Min(buffer.Length, length - _position);
+            chars.AsSpan(_position, count).CopyTo(buffer);
+            _position += count;
+            return count;
+        }
+    }
+
+    sealed class JsonArrayPool : IArrayPool<char>
+    {
+        public static readonly JsonArrayPool Instance = new();
+
+        public char[] Rent(int minimumLength) => ArrayPool<char>.Shared.Rent(minimumLength);
+
+        public void Return(char[]? array)
+        {
+            if (array is not null)
+                ArrayPool<char>.Shared.Return(array);
+        }
     }
 }
