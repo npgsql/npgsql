@@ -12,13 +12,15 @@ namespace Npgsql.Json.NET.Internal;
 
 sealed class JsonNetJsonConverter<T>(bool jsonb, JsonSerializerSettings settings) : PgStreamingConverter<T?>
 {
+    readonly JsonSerializer _serializer = JsonSerializer.CreateDefault(settings);
+
     public override T? Read(PgReader reader)
-        => (T?)JsonNetJsonConverter.Read(async: false, jsonb, reader, typeof(T), settings, reader.ConversionContext.TextEncoding, CancellationToken.None).GetAwaiter().GetResult();
+        => (T?)JsonNetJsonConverter.Read(async: false, jsonb, reader, typeof(T), _serializer, reader.ConversionContext.TextEncoding, CancellationToken.None).GetAwaiter().GetResult();
     public override async ValueTask<T?> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
-        => (T?)await JsonNetJsonConverter.Read(async: true, jsonb, reader, typeof(T), settings, reader.ConversionContext.TextEncoding, cancellationToken).ConfigureAwait(false);
+        => (T?)await JsonNetJsonConverter.Read(async: true, jsonb, reader, typeof(T), _serializer, reader.ConversionContext.TextEncoding, cancellationToken).ConfigureAwait(false);
 
     protected override Size BindValue(in BindContext context, T? value, ref object? writeState)
-        => JsonNetJsonConverter.BindValue(jsonb, context, typeof(T), settings, context.ConversionContext.TextEncoding, value, ref writeState);
+        => JsonNetJsonConverter.BindValue(jsonb, context, typeof(T), _serializer, context.ConversionContext.TextEncoding, value, ref writeState);
 
     public override void Write(PgWriter writer, T? value)
         => JsonNetJsonConverter.Write(jsonb, async: false, writer, CancellationToken.None).GetAwaiter().GetResult();
@@ -32,7 +34,7 @@ static class JsonNetJsonConverter
 {
     public const byte JsonbProtocolVersion = 1;
 
-    public static async ValueTask<object?> Read(bool async, bool jsonb, PgReader reader, Type type, JsonSerializerSettings settings, Encoding encoding, CancellationToken cancellationToken)
+    public static async ValueTask<object?> Read(bool async, bool jsonb, PgReader reader, Type type, JsonSerializer serializer, Encoding encoding, CancellationToken cancellationToken)
     {
         if (jsonb)
         {
@@ -55,21 +57,19 @@ static class JsonNetJsonConverter
         else
             stream.CopyTo(mem);
         mem.Position = 0;
-        var jsonSerializer = JsonSerializer.CreateDefault(settings);
         using var textReader = new JsonTextReader(new StreamReader(mem, encoding));
-        return jsonSerializer.Deserialize(textReader, type);
+        return serializer.Deserialize(textReader, type);
     }
 
-    public static Size BindValue(bool jsonb, in BindContext context, Type type, JsonSerializerSettings settings, Encoding encoding, object? value, ref object? writeState)
+    public static Size BindValue(bool jsonb, in BindContext context, Type type, JsonSerializer serializer, Encoding encoding, object? value, ref object? writeState)
     {
-        var jsonSerializer = JsonSerializer.CreateDefault(settings);
         var sb = new StringBuilder(256);
         var sw = new StringWriter(sb, CultureInfo.InvariantCulture);
         using (var jsonWriter = new JsonTextWriter(sw))
         {
-            jsonWriter.Formatting = jsonSerializer.Formatting;
+            jsonWriter.Formatting = serializer.Formatting;
 
-            jsonSerializer.Serialize(jsonWriter, value, type);
+            serializer.Serialize(jsonWriter, value, type);
         }
 
         var str = sw.ToString();
