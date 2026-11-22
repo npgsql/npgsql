@@ -170,6 +170,25 @@ public class JsonNetTests(string dataTypeName) : TestBase
         public string? SomeString { get; set; }
     }
 
+    [Test]
+    public async Task Read_value_larger_than_read_buffer_with_sequential_access([Values] bool async)
+    {
+        var expected = new Bug3464Class { SomeString = new string('5', 100_000) };
+        await using var conn = await JsonDataSource.OpenConnectionAsync();
+        await using var cmd = new NpgsqlCommand("SELECT @p", conn);
+        cmd.Parameters.AddWithValue("p", expected).DataTypeName = dataTypeName;
+
+        await using var reader = async
+            ? await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess)
+            : cmd.ExecuteReader(CommandBehavior.SequentialAccess);
+        Assert.That(async ? await reader.ReadAsync() : reader.Read());
+        var actual = async
+            ? await reader.GetFieldValueAsync<Bug3464Class>(0)
+            : reader.GetFieldValue<Bug3464Class>(0);
+
+        Assert.That(actual.SomeString, Is.EqualTo(expected.SomeString));
+    }
+
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/5475")]
     public async Task Read_jarray_from_get_value()
     {
