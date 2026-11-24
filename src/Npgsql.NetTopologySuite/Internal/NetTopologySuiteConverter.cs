@@ -11,14 +11,17 @@ namespace Npgsql.NetTopologySuite.Internal;
 sealed class NetTopologySuiteConverter<T> : PgStreamingConverter<T>
     where T : Geometry
 {
-    readonly PostGisReader _reader;
+    readonly Func<PostGisReader> _readerFactory;
     readonly PostGisWriter _writer;
 
-    internal NetTopologySuiteConverter(PostGisReader reader, PostGisWriter writer)
-        => (_reader, _writer) = (reader, writer);
+    // PostGisReader isn't thread safe and has external settings, which is why we can't cache it
+    PostGisReader Reader => _readerFactory();
+
+    internal NetTopologySuiteConverter(Func<PostGisReader> readerFactory, PostGisWriter writer)
+        => (_readerFactory, _writer) = (readerFactory, writer);
 
     public override T Read(PgReader reader)
-        => (T)_reader.Read(reader.GetStream());
+        => (T)Reader.Read(reader.GetStream());
 
     // PostGisReader/PostGisWriter doesn't support async
     public override ValueTask<T> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)

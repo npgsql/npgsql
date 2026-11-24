@@ -19,12 +19,12 @@ sealed class NetTopologySuiteTypeInfoResolverFactory(
 
     class Resolver : IPgTypeInfoResolver
     {
-        readonly PostGisReader _gisReader;
+        readonly Func<PostGisReader> _gisReaderFactory;
         readonly PostGisWriter _gisWriter;
         protected readonly bool _geographyAsDefault;
 
         TypeInfoMappingCollection? _mappings;
-        protected TypeInfoMappingCollection Mappings => _mappings ??= AddMappings(new(), _gisReader, _gisWriter, _geographyAsDefault);
+        protected TypeInfoMappingCollection Mappings => _mappings ??= AddMappings(new(), _gisReaderFactory, _gisWriter, _geographyAsDefault);
 
         public Resolver(
             CoordinateSequenceFactory? coordinateSequenceFactory,
@@ -37,7 +37,7 @@ sealed class NetTopologySuiteTypeInfoResolverFactory(
             handleOrdinates = handleOrdinates == Ordinates.None ? coordinateSequenceFactory.Ordinates : handleOrdinates;
 
             _geographyAsDefault = geographyAsDefault;
-            _gisReader = new PostGisReader(coordinateSequenceFactory, precisionModel, handleOrdinates);
+            _gisReaderFactory = () => new PostGisReader(coordinateSequenceFactory, precisionModel, handleOrdinates);
             _gisWriter = new PostGisWriter
             {
                 HandleOrdinates = handleOrdinates
@@ -47,31 +47,31 @@ sealed class NetTopologySuiteTypeInfoResolverFactory(
         public PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
             => Mappings.Find(type, dataTypeName, options);
 
-        static TypeInfoMappingCollection AddMappings(TypeInfoMappingCollection mappings, PostGisReader reader, PostGisWriter writer,
+        static TypeInfoMappingCollection AddMappings(TypeInfoMappingCollection mappings, Func<PostGisReader> readerFactory, PostGisWriter writer,
             bool geographyAsDefault)
         {
             foreach (var dataTypeName in geographyAsDefault ? ["geography", "geometry"] : new[] { "geometry", "geography" })
             {
                 mappings.AddType<Geometry>(dataTypeName,
-                    (options, mapping, _) => mapping.CreateInfo(options, new NetTopologySuiteConverter<Geometry>(reader, writer)),
+                    (options, mapping, _) => mapping.CreateInfo(options, new NetTopologySuiteConverter<Geometry>(readerFactory, writer)),
                     isDefault: true);
 
                 mappings.AddType<Point>(dataTypeName,
-                    (options, mapping, _) => mapping.CreateInfo(options, new NetTopologySuiteConverter<Point>(reader, writer)));
+                    (options, mapping, _) => mapping.CreateInfo(options, new NetTopologySuiteConverter<Point>(readerFactory, writer)));
                 mappings.AddType<MultiPoint>(dataTypeName,
-                    (options, mapping, _) => mapping.CreateInfo(options, new NetTopologySuiteConverter<MultiPoint>(reader, writer)));
+                    (options, mapping, _) => mapping.CreateInfo(options, new NetTopologySuiteConverter<MultiPoint>(readerFactory, writer)));
                 mappings.AddType<LineString>(dataTypeName,
-                    (options, mapping, _) => mapping.CreateInfo(options, new NetTopologySuiteConverter<LineString>(reader, writer)));
+                    (options, mapping, _) => mapping.CreateInfo(options, new NetTopologySuiteConverter<LineString>(readerFactory, writer)));
                 mappings.AddType<LinearRing>(dataTypeName,
-                    (options, mapping, _) => mapping.CreateInfo(options, new NetTopologySuiteConverter<LinearRing>(reader, writer)));
+                    (options, mapping, _) => mapping.CreateInfo(options, new NetTopologySuiteConverter<LinearRing>(readerFactory, writer)));
                 mappings.AddType<MultiLineString>(dataTypeName,
-                    (options, mapping, _) => mapping.CreateInfo(options, new NetTopologySuiteConverter<MultiLineString>(reader, writer)));
+                    (options, mapping, _) => mapping.CreateInfo(options, new NetTopologySuiteConverter<MultiLineString>(readerFactory, writer)));
                 mappings.AddType<Polygon>(dataTypeName,
-                    (options, mapping, _) => mapping.CreateInfo(options, new NetTopologySuiteConverter<Polygon>(reader, writer)));
+                    (options, mapping, _) => mapping.CreateInfo(options, new NetTopologySuiteConverter<Polygon>(readerFactory, writer)));
                 mappings.AddType<MultiPolygon>(dataTypeName,
-                    (options, mapping, _) => mapping.CreateInfo(options, new NetTopologySuiteConverter<MultiPolygon>(reader, writer)));
+                    (options, mapping, _) => mapping.CreateInfo(options, new NetTopologySuiteConverter<MultiPolygon>(readerFactory, writer)));
                 mappings.AddType<GeometryCollection>(dataTypeName,
-                    (options, mapping, _) => mapping.CreateInfo(options, new NetTopologySuiteConverter<GeometryCollection>(reader, writer)));
+                    (options, mapping, _) => mapping.CreateInfo(options, new NetTopologySuiteConverter<GeometryCollection>(readerFactory, writer)));
             }
 
             return mappings;
