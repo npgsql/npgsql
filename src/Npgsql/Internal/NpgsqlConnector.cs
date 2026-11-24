@@ -3145,7 +3145,6 @@ enum ConnectorState
 
     /// <summary>
     /// The connection was broken because an unexpected error occurred which left it in an unknown state.
-    /// This state isn't implemented yet.
     /// </summary>
     Broken,
 

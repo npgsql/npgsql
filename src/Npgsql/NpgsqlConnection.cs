@@ -1514,8 +1514,11 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         case ConnectionState.Open | ConnectionState.Fetching:
         case ConnectionState.Connecting:
             return;
-        case ConnectionState.Closed:
         case ConnectionState.Broken:
+            ThrowHelper.ThrowNpgsqlException(
+                "The connection was previously broken because of an exception (see the logs for details).");
+            return;
+        case ConnectionState.Closed:
             ThrowHelper.ThrowInvalidOperationException("Connection is not open");
             return;
         default:
@@ -1545,8 +1548,11 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         case ConnectionState.Open:
         case ConnectionState.Connecting:  // We need to do type loading as part of connecting
             return;
-        case ConnectionState.Closed:
         case ConnectionState.Broken:
+            ThrowHelper.ThrowNpgsqlException(
+                "The connection was previously broken because of an exception (see the logs for details).");
+            return;
+        case ConnectionState.Closed:
             ThrowHelper.ThrowInvalidOperationException("Connection is not open");
             return;
         case ConnectionState.Open | ConnectionState.Executing:

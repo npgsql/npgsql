@@ -145,6 +145,21 @@ public class ConnectionTests : TestBase
         Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
     }
 
+    [Test]
+    [IssueLink("https://github.com/npgsql/npgsql/issues/5605")]
+    public async Task Broken_connection_throws_NpgsqlException_not_InvalidOperationException()
+    {
+        await using var dataSource = CreateDataSource();
+        await using var conn = await dataSource.OpenConnectionAsync();
+
+        conn.Connector!.Break(new IOException("Simulated connection break"));
+        Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
+
+        // A broken connection must surface as NpgsqlException (catchable as a connection error)
+        // rather than InvalidOperationException. See #5605.
+        Assert.Throws<NpgsqlException>(() => conn.BeginTransaction());
+    }
+
     #region Connection Errors
 
 #if IGNORE
