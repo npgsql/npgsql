@@ -14,7 +14,8 @@ sealed class NetTopologySuiteConverter<T> : PgStreamingConverter<T>
     readonly Func<PostGisReader> _readerFactory;
     readonly PostGisWriter _writer;
 
-    PostGisReader Reader => PostGisReaderHolder.Instance ??= _readerFactory();
+    // PostGisReader isn't thread safe and has external settings, which is why we can't cache it
+    PostGisReader Reader => _readerFactory();
 
     internal NetTopologySuiteConverter(Func<PostGisReader> readerFactory, PostGisWriter writer)
         => (_readerFactory, _writer) = (readerFactory, writer);
@@ -78,11 +79,4 @@ sealed class NetTopologySuiteConverter<T> : PgStreamingConverter<T>
         public override void Write(byte[] buffer, int offset, int count)
             => _length += count;
     }
-}
-
-static class PostGisReaderHolder
-{
-    // PostGisReader isn't thread safe, which is why we pass it as a func and create a separate instance per thread
-    [ThreadStatic]
-    public static PostGisReader? Instance;
 }
