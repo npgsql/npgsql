@@ -19,10 +19,6 @@ sealed class NetTopologySuiteTypeInfoResolverFactory(
 
     class Resolver : IPgTypeInfoResolver
     {
-        // PostGisReader isn't thread safe, which is why we pass it as a func and create a separate instance per thread
-        [ThreadStatic]
-        static PostGisReader? _instance;
-
         readonly Func<PostGisReader> _gisReaderFactory;
         readonly PostGisWriter _gisWriter;
         protected readonly bool _geographyAsDefault;
@@ -41,7 +37,7 @@ sealed class NetTopologySuiteTypeInfoResolverFactory(
             handleOrdinates = handleOrdinates == Ordinates.None ? coordinateSequenceFactory.Ordinates : handleOrdinates;
 
             _geographyAsDefault = geographyAsDefault;
-            _gisReaderFactory = () => _instance ??= new PostGisReader(coordinateSequenceFactory, precisionModel, handleOrdinates);
+            _gisReaderFactory = () => new PostGisReader(coordinateSequenceFactory, precisionModel, handleOrdinates);
             _gisWriter = new PostGisWriter
             {
                 HandleOrdinates = handleOrdinates

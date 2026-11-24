@@ -11,10 +11,14 @@ namespace Npgsql.NetTopologySuite.Internal;
 sealed class NetTopologySuiteConverter<T> : PgStreamingConverter<T>
     where T : Geometry
 {
+    // PostGisReader isn't thread safe, which is why we pass it as a func and create a separate instance per thread
+    [ThreadStatic]
+    static PostGisReader? _instance;
+
     readonly Func<PostGisReader> _readerFactory;
     readonly PostGisWriter _writer;
 
-    PostGisReader Reader => _readerFactory();
+    PostGisReader Reader => _instance ??= _readerFactory();
 
     internal NetTopologySuiteConverter(Func<PostGisReader> readerFactory, PostGisWriter writer)
         => (_readerFactory, _writer) = (readerFactory, writer);
