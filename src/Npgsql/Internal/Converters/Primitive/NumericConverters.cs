@@ -120,7 +120,7 @@ sealed class DecimalNumericConverter<T> : PgBufferedConverter<T> where T : INumb
     public override void Write(PgWriter writer, T value)
     {
         // We don't know how many digits we need so we allocate enough for the builder to use.
-        Span<short> destination = stackalloc short[PgNumeric.Builder.MaxDecimalNumericDigits];
+        Span<short> destination = stackalloc short[PgNumeric.Builder.DecimalDestinationLength];
         var numeric = ConvertFrom(value, destination);
         NumericConverter.Write(writer, numeric);
     }

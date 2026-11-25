@@ -88,6 +88,10 @@ readonly struct PgNumeric(ArraySegment<short> digits, short weight, short sign, 
 
         internal const int MaxDecimalNumericDigits = 8;
 
+        // The destination length the decimal constructor needs to not allocate, see GetDestinationLength.
+        // This is one more than MaxDecimalNumericDigits as Create reserves a digit for a scale that does not sit on a digit boundary.
+        internal const int DecimalDestinationLength = ((DecimalBits - 1) * (MaxUInt32Scale + 1) + MaxUInt16Scale - 1) / MaxUInt16Scale + 1;
+
         // Fast access for 10^n where n is 0-9
         static ReadOnlySpan<uint> UIntPowers10 =>
         [
@@ -136,7 +140,12 @@ readonly struct PgNumeric(ArraySegment<short> digits, short weight, short sign, 
         {
             Debug.Assert(UIntPowers10.Length >= NumericBaseLog10);
             Debug.Assert(NumericBase < short.MaxValue);
+            Debug.Assert(DecimalDestinationLength == GetDestinationLength(DecimalBits - 1));
         }
+
+        // Upper bound of the digits Create can write for the given bits, any smaller destination is replaced by an allocated array.
+        static int GetDestinationLength(int bitsLength)
+            => (bitsLength * (MaxUInt32Scale + 1) + MaxUInt16Scale - 1) / MaxUInt16Scale + 1;
 
         static void Create(ref short[]? digitsArray, ref Span<short> destination, scoped Span<uint> bits, short scale, out short weight, out int digitCount)
         {
@@ -144,7 +153,7 @@ readonly struct PgNumeric(ArraySegment<short> digits, short weight, short sign, 
             digitCount = 0;
             var digitWeight = -scale / NumericBaseLog10 - 1;
 
-            var bitsUpperBound = (bits.Length * (MaxUInt32Scale + 1) + MaxUInt16Scale - 1) / MaxUInt16Scale + 1;
+            var bitsUpperBound = GetDestinationLength(bits.Length);
             if (bitsUpperBound > destination.Length)
                 destination = digitsArray = new short[bitsUpperBound];
 

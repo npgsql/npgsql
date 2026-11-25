@@ -3,6 +3,7 @@ using System.Data;
 using System.Linq;
 using System.Numerics;
 using System.Threading.Tasks;
+using Npgsql.Internal.Converters;
 using NUnit.Framework;
 
 namespace Npgsql.Tests.Types;
@@ -51,6 +52,17 @@ public class NumericTests : TestBase
 
         new object[] { "+79228162514264337593543950335::numeric", +79228162514264337593543950335M },
         new object[] { "-79228162514264337593543950335::numeric", -79228162514264337593543950335M },
+
+        // Maximum precision with scales that do and do not sit on a numeric digit boundary, these need all 8 numeric digits.
+        new object[] { "7.9228162514264337593543950335::numeric", 7.9228162514264337593543950335M },
+        new object[] { "-7.9228162514264337593543950335::numeric", -7.9228162514264337593543950335M },
+        new object[] { "79.228162514264337593543950335::numeric", 79.228162514264337593543950335M },
+        new object[] { "792.28162514264337593543950335::numeric", 792.28162514264337593543950335M },
+        new object[] { "-792281625142643375935439.50335::numeric", -792281625142643375935439.50335M },
+        new object[] { "7922816251426433759354395.0335::numeric", 7922816251426433759354395.0335M },
+        new object[] { "79228162514264337593543950.335::numeric", 79228162514264337593543950.335M },
+        new object[] { "7922816251426433759354395033.5::numeric", 7922816251426433759354395033.5M },
+        new object[] { "7922816251426433759354395030.0::numeric", 7922816251426433759354395030.0M },
 
         // It is important to test rounding on both even and odd
         // numbers to make sure midpoint rounding is away from zero.
@@ -109,6 +121,23 @@ public class NumericTests : TestBase
         Assert.That(rdr.GetFieldValue<bool>(1));
     }
 
+
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/6728")]
+    [TestCaseSource(nameof(ReadWriteCases))]
+    public void Builder_from_decimal_uses_destination(string query, decimal expected)
+    {
+        // DecimalNumericConverter writes through a stack allocated destination of this length,
+        // it must be large enough for the builder to not allocate a digits array of its own.
+        Span<short> destination = stackalloc short[PgNumeric.Builder.DecimalDestinationLength];
+        var builder = new PgNumeric.Builder(expected, destination);
+        var digits = builder.Digits;
+        var usesDestination = digits.IsEmpty || destination.Overlaps(digits);
+        var value = builder.ToDecimal();
+
+        Assert.That(usesDestination);
+        Assert.That(digits.Length, Is.LessThanOrEqualTo(PgNumeric.Builder.MaxDecimalNumericDigits));
+        Assert.That(decimal.GetBits(value), Is.EqualTo(decimal.GetBits(expected)));
+    }
 
     [Test]
     public async Task Numeric()
