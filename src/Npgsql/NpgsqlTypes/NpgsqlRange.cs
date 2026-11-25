@@ -336,17 +336,26 @@ public readonly struct NpgsqlRange<T> : IEquatable<NpgsqlRange<T>>
         sb.Append(LowerBoundIsInclusive ? LowerInclusiveBound : LowerExclusiveBound);
 
         if (!LowerBoundInfinite)
-            sb.Append(LowerBound);
+            sb.Append(FormatBound(LowerBound));
 
         sb.Append(BoundSeparator);
 
         if (!UpperBoundInfinite)
-            sb.Append(UpperBound);
+            sb.Append(FormatBound(UpperBound));
 
         sb.Append(UpperBoundIsInclusive ? UpperInclusiveBound : UpperExclusiveBound);
 
         return sb.ToString();
     }
+
+    // Bounds are formatted independently of the current culture, with date/time values in ISO 8601.
+    static string? FormatBound(T? bound)
+        => bound switch
+        {
+            DateTime or DateTimeOffset or DateOnly or TimeOnly => ((IFormattable)bound).ToString("O", CultureInfo.InvariantCulture),
+            IFormattable formattable => formattable.ToString(null, CultureInfo.InvariantCulture),
+            _ => bound?.ToString()
+        };
 
     // TODO: rewrite this to use ReadOnlySpan<char> for the 4.1 release
     /// <summary>
@@ -426,8 +435,8 @@ public readonly struct NpgsqlRange<T> : IEquatable<NpgsqlRange<T>>
             string.Equals(upperSegment, UpperInfinityLiteral, StringComparison.OrdinalIgnoreCase);
 
         BoundConverter ??= TypeDescriptor.GetConverter(typeof(T));
-        var lower = lowerInfinite ? default : (T?)BoundConverter.ConvertFromString(lowerSegment);
-        var upper = upperInfinite ? default : (T?)BoundConverter.ConvertFromString(upperSegment);
+        var lower = lowerInfinite ? default : (T?)BoundConverter.ConvertFromInvariantString(lowerSegment);
+        var upper = upperInfinite ? default : (T?)BoundConverter.ConvertFromInvariantString(upperSegment);
 
         return new NpgsqlRange<T>(lower, lowerInclusive, lowerInfinite, upper, upperInclusive, upperInfinite);
     }
