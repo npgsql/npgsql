@@ -333,6 +333,28 @@ CREATE TYPE {compositeType} AS (ints int4[])");
             comparer: (actual, expected) => actual.Ints!.SequenceEqual(expected.Ints!));
     }
 
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/5591")]
+    public async Task Composite_containing_short_array()
+    {
+        await using var adminConnection = await OpenConnectionAsync();
+        var compositeType = await GetTempTypeName(adminConnection);
+
+        await adminConnection.ExecuteNonQueryAsync($"CREATE TYPE {compositeType} AS (shortlist smallint[])");
+
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.MapComposite<SomeCompositeWithShortArray>(compositeType);
+        await using var dataSource = dataSourceBuilder.Build();
+        await using var connection = await dataSource.OpenConnectionAsync();
+
+        await AssertType(
+            connection,
+            new SomeCompositeWithShortArray { ShortList = [short.MinValue, 0, short.MaxValue] },
+            """("{-32768,0,32767}")""",
+            compositeType,
+            dataTypeInference: DataTypeInference.Nothing,
+            comparer: (actual, expected) => actual.ShortList.SequenceEqual(expected.ShortList));
+    }
+
     [Test]
     public async Task Composite_containing_enum_type()
     {
@@ -357,6 +379,35 @@ CREATE TYPE {compositeType} AS (enum_value {enumType});");
             compositeType,
             dataTypeInference: DataTypeInference.Nothing,
             comparer: (actual, expected) => actual.EnumValue == expected.EnumValue);
+    }
+
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/5591")]
+    public async Task Composite_containing_enum_underlying_type_and_array()
+    {
+        await using var adminConnection = await OpenConnectionAsync();
+        var compositeType = await GetTempTypeName(adminConnection);
+
+        await adminConnection.ExecuteNonQueryAsync(
+            $"CREATE TYPE {compositeType} AS (enum_value smallint, enum_values smallint[])");
+
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.MapComposite<SomeCompositeWithUnderlyingEnum>(compositeType);
+        await using var dataSource = dataSourceBuilder.Build();
+        await using var connection = await dataSource.OpenConnectionAsync();
+
+        await AssertType(
+            connection,
+            new SomeCompositeWithUnderlyingEnum
+            {
+                EnumValue = SomeCompositeWithUnderlyingEnum.TestEnum.Minimum,
+                EnumValues = [SomeCompositeWithUnderlyingEnum.TestEnum.Minimum,
+                    SomeCompositeWithUnderlyingEnum.TestEnum.Zero, SomeCompositeWithUnderlyingEnum.TestEnum.Maximum]
+            },
+            """(-32768,"{-32768,0,32767}")""",
+            compositeType,
+            dataTypeInference: DataTypeInference.Nothing,
+            comparer: (actual, expected) => actual.EnumValue == expected.EnumValue
+                && actual.EnumValues.SequenceEqual(expected.EnumValues));
     }
 
     [Test]
@@ -730,6 +781,12 @@ CREATE TYPE {type2} AS (comp {type1}, comps {type1}[]);");
         public int[]? Ints { get; set; }
     }
 
+    class SomeCompositeWithShortArray
+    {
+        [PgName("shortlist")]
+        public short[] ShortList { get; set; } = [];
+    }
+
     class SomeCompositeWithEnum
     {
         public enum TestEnum
@@ -740,6 +797,19 @@ CREATE TYPE {type2} AS (comp {type1}, comps {type1}[]);");
         }
 
         public TestEnum EnumValue { get; set; }
+    }
+
+    class SomeCompositeWithUnderlyingEnum
+    {
+        public enum TestEnum : short
+        {
+            Minimum = short.MinValue,
+            Zero = 0,
+            Maximum = short.MaxValue
+        }
+
+        public TestEnum EnumValue { get; set; }
+        public TestEnum[] EnumValues { get; set; } = [];
     }
 
     class SomeCompositeWithIPAddress
