@@ -237,6 +237,9 @@ public class CommonReplicationTests<TConnection> : SafeReplicationTestBase<TConn
                 await using var rc = await OpenReplicationConnectionAsync(new NpgsqlConnectionStringBuilder(ConnectionString));
                 var walSenderTimeout = ParseTimespan(await rc.Show("wal_sender_timeout"));
                 var info = await rc.IdentifySystem();
+                // Zero disables the timeout
+                if (walSenderTimeout == Timeout.InfiniteTimeSpan)
+                    TestUtil.IgnoreExceptOnBuildServer("wal_sender_timeout is disabled, skipping");
                 if (walSenderTimeout > TimeSpan.FromSeconds(3) && !TestUtil.IsOnBuildServer)
                     Assert.Ignore($"wal_sender_timeout is set to {walSenderTimeout}, skipping");
                 var walReceiverStatusInterval = TimeSpan.FromTicks(walSenderTimeout.Ticks / 2L);
