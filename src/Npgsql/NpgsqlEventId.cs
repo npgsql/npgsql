@@ -101,6 +101,11 @@ public static class NpgsqlEventId
     public const int StartingPhysicalReplication = 50003;
     public const int ExecutingReplicationCommand = 50004;
 
+    public const int ReplicationTimelineEnded       = 50006;
+    public const int ReplicationStreamEndedByServer = 50007;
+    public const int StoppingReplication            = 50008;
+    public const int StoppingReplicationFailed      = 50013;
+
     public const int ReceivedReplicationPrimaryKeepalive     = 50100;
     public const int SendingReplicationStandbyStatusUpdate   = 50101;
     public const int SentReplicationFeedbackMessage          = 50102;
