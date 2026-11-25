@@ -577,7 +577,7 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
     /// </remarks>
     /// <remarks>
     /// Take care that the setting you apply in the initializer does not get reverted when the connection is returned to the pool, since
-    /// Npgsql sends <c>DISCARD ALL</c> by default. The <see cref="NpgsqlConnectionStringBuilder.NoResetOnClose" /> option can be used to
+    /// Npgsql sends <c>RESET ALL</c> by default. The <see cref="NpgsqlConnectionStringBuilder.NoResetOnClose" /> option can be used to
     /// turn this off.
     /// </remarks>
     /// <returns>The same builder instance so that multiple calls can be chained.</returns>

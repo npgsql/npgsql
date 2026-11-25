@@ -1452,7 +1452,7 @@ $$ LANGUAGE plpgsql;";
         var queryTask = conn.ExecuteNonQueryAsync("SELECT 1", cancellationToken: cts.Token);
 
         var server = await postmasterMock.WaitForServerConnection();
-        await server.ExpectSimpleQuery("DISCARD ALL");
+        await server.ExpectSimpleQuery(PgServerMock.ResetQuery);
         await server.ExpectExtendedQuery();
 
         var cancelTask = Task.Run(cts.Cancel);
@@ -1478,8 +1478,7 @@ $$ LANGUAGE plpgsql;";
         }
 
         await server
-            .WriteCommandComplete()
-            .WriteReadyForQuery()
+            .WriteResetResponse()
             .FlushAsync();
 
         await cancelTask;

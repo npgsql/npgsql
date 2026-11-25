@@ -22,6 +22,12 @@ class PgServerMock : IDisposable
 
     internal const string DefaultServerVersion = "14";
 
+    /// <summary>
+    /// The query Npgsql prepends to reset a pooled connection that has no prepared statements, for <see cref="DefaultServerVersion" />.
+    /// </summary>
+    internal const string ResetQuery =
+        "SET SESSION AUTHORIZATION DEFAULT;RESET ALL;CLOSE ALL;UNLISTEN *;SELECT pg_advisory_unlock_all();DISCARD TEMP;DEALLOCATE ALL";
+
     static readonly Encoding Encoding = NpgsqlWriteBuffer.UTF8Encoding;
 
     readonly NetworkStream _stream;
@@ -236,6 +242,21 @@ class PgServerMock : IDisposable
             .WriteCommandComplete()
             .WriteReadyForQuery()
             .FlushAsync();
+
+    /// <summary>
+    /// Writes the responses to <see cref="ResetQuery" />.
+    /// </summary>
+    internal PgServerMock WriteResetResponse()
+        => WriteCommandComplete("SET")
+            .WriteCommandComplete("RESET")
+            .WriteCommandComplete("CLOSE CURSOR ALL")
+            .WriteCommandComplete("UNLISTEN")
+            .WriteRowDescription(new FieldDescription(TextOid))
+            .WriteDataRow(Array.Empty<byte>())
+            .WriteCommandComplete("SELECT 1")
+            .WriteCommandComplete("DISCARD TEMP")
+            .WriteCommandComplete("DEALLOCATE ALL")
+            .WriteReadyForQuery();
 
     internal void Close() => _stream.Close();
 
