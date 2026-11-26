@@ -149,6 +149,25 @@ public class TransactionTests : TestBase
         Assert.That(await conn.ExecuteScalarAsync($"SELECT COUNT(*) FROM {table}"), Is.EqualTo(0));
     }
 
+    [Test, Description("Commits a failed transaction block, which PostgreSQL rolls back instead of committing")]
+    [IssueLink("https://github.com/npgsql/npgsql/issues/6775")]
+    public async Task Commit_failed([Values] bool async)
+    {
+        await using var conn = await OpenConnectionAsync();
+        var table = await CreateTempTable(conn, "name TEXT");
+
+        await using var tx = await conn.BeginTransactionAsync();
+        await conn.ExecuteNonQueryAsync($"INSERT INTO {table} (name) VALUES ('X')", tx: tx);
+        Assert.That(async () => await conn.ExecuteNonQueryAsync("BAD QUERY"), Throws.Exception.TypeOf<PostgresException>());
+
+        var ex = async
+            ? (await Assert.ThrowsAsync<PostgresException>(async () => await tx.CommitAsync()))!
+            : Assert.Throws<PostgresException>(() => tx.Commit())!;
+        Assert.That(ex.SqlState, Is.EqualTo(PostgresErrorCodes.InFailedSqlTransaction));
+        Assert.That(tx.IsCompleted);
+        Assert.That(await conn.ExecuteScalarAsync($"SELECT COUNT(*) FROM {table}"), Is.EqualTo(0));
+    }
+
     [Test, Description("Commits an empty transaction")]
     public async Task Empty_commit()
     {

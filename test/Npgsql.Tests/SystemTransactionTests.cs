@@ -116,6 +116,27 @@ public class SystemTransactionTests : TestBase
         AssertNumberOfRows(0, tableName);
     }
 
+    [Test, Description("Completes a scope whose transaction failed, which must abort rather than report a commit")]
+    [IssueLink("https://github.com/npgsql/npgsql/issues/6775")]
+    public void Complete_failed_implicit_enlist()
+    {
+        var dataSource = EnlistOnDataSource;
+        var tableName = CreateTempTable(dataSource, "name TEXT");
+
+        using var conn = dataSource.CreateConnection();
+        var scope = new TransactionScope();
+        conn.Open();
+        Assert.That(conn.ExecuteNonQuery(@$"INSERT INTO {tableName} (name) VALUES ('test')"), Is.EqualTo(1), "Unexpected insert rowcount");
+        Assert.That(() => conn.ExecuteNonQuery("BAD QUERY"), Throws.Exception.TypeOf<PostgresException>());
+        AssertNoDistributedIdentifier();
+        scope.Complete();
+
+        var ex = Assert.Throws<TransactionAbortedException>(() => scope.Dispose())!;
+        Assert.That(ex.InnerException, Is.TypeOf<PostgresException>()
+            .With.Property(nameof(PostgresException.SqlState)).EqualTo(PostgresErrorCodes.InFailedSqlTransaction));
+        AssertNumberOfRows(0, tableName);
+    }
+
     [Test]
     public void Two_consecutive_connections()
     {

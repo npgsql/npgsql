@@ -150,6 +150,10 @@ public sealed class NpgsqlTransaction : DbTransaction
     /// <summary>
     /// Commits the database transaction.
     /// </summary>
+    /// <exception cref="PostgresException">
+    /// A command in the transaction failed, so the server rolled it back instead of committing it. <see cref="PostgresException.SqlState" />
+    /// is <see cref="PostgresErrorCodes.InFailedSqlTransaction" />, and the transaction is complete.
+    /// </exception>
     public override void Commit() => Commit(false).GetAwaiter().GetResult();
 
     async Task Commit(bool async, CancellationToken cancellationToken = default)
@@ -161,6 +165,18 @@ public sealed class NpgsqlTransaction : DbTransaction
 
         using (_connector.StartUserAction(cancellationToken))
         {
+            // PostgreSQL answers COMMIT on a failed transaction with a ROLLBACK command tag, not an error, so sending it would
+            // report success for writes the server discarded. The status of the last ReadyForQuery already tells us, so end
+            // the transaction and surface the outcome without an extra roundtrip.
+            if (_connector.TransactionStatus == TransactionStatus.InFailedTransactionBlock)
+            {
+                await _connector.Rollback(async, cancellationToken).ConfigureAwait(false);
+                LogMessages.RolledBackTransaction(_transactionLogger, _connector.Id);
+                throw new PostgresException(
+                    "The transaction was rolled back instead of committed, because a command in it failed",
+                    "ERROR", "ERROR", PostgresErrorCodes.InFailedSqlTransaction);
+            }
+
             await _connector.ExecuteInternalCommand(PregeneratedMessages.CommitTransaction, async, cancellationToken).ConfigureAwait(false);
             LogMessages.CommittedTransaction(_transactionLogger, _connector.Id);
         }
@@ -172,6 +188,10 @@ public sealed class NpgsqlTransaction : DbTransaction
     /// <param name="cancellationToken">
     /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
     /// </param>
+    /// <exception cref="PostgresException">
+    /// A command in the transaction failed, so the server rolled it back instead of committing it. <see cref="PostgresException.SqlState" />
+    /// is <see cref="PostgresErrorCodes.InFailedSqlTransaction" />, and the transaction is complete.
+    /// </exception>
     public override Task CommitAsync(CancellationToken cancellationToken = default)
         => Commit(async: true, cancellationToken);
 
