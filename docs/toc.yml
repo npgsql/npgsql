@@ -1,0 +1,98 @@
+﻿- name: Getting Started
+  href: index.md
+- name: Release notes
+  items:
+  - name: "11.0"
+    href: release-notes/11.0.md
+  - name: "10.0"
+    href: release-notes/10.0.md
+  - name: "9.0"
+    href: release-notes/9.0.md
+  - name: "8.0"
+    href: release-notes/8.0.md
+  - name: Out of support
+    items:
+    - name: "7.0"
+      href: release-notes/7.0.md
+    - name: "6.0"
+      href: release-notes/6.0.md
+    - name: "5.0"
+      href: release-notes/5.0.md
+    - name: "4.1"
+      href: release-notes/4.1.md
+    - name: "4.0"
+      href: release-notes/4.0.md
+    - name: "3.2"
+      href: release-notes/3.2.md
+    - name: "3.1"
+      href: release-notes/3.1.md
+    - name: "3.0"
+      href: release-notes/3.0.md
+- name: Installation
+  href: installation.md
+- name: Basic usage
+  href: basic-usage.md
+- name: Connection string parameters
+  href: connection-string-parameters.md
+- name: Security and encryption
+  href: security.md
+- name: Type mapping
+  items:
+  - name: Basic type mapping
+    href: types/basic.md
+  - name: Date and time
+    href: types/datetime.md
+  - name: Enums and composites
+    href: types/enums_and_composites.md
+  - name: Spatial
+    items:
+    - name: NetTopologySuite
+      href: types/nts.md
+    - name: GeoJSON
+      href: types/geojson.md
+  - name: JSON
+    href: types/json.md
+  - name: NodaTime
+    href: types/nodatime.md
+- name: Diagnostics
+  items:
+  - name: Overview
+    href: diagnostics/overview.md
+  - name: Tracing
+    href: diagnostics/tracing.md
+  - name: Logging
+    href: diagnostics/logging.md
+  - name: Metrics
+    href: diagnostics/metrics.md
+  - name: Exceptions and notices
+    href: diagnostics/exceptions_notices.md
+- name: Performance
+  href: performance.md
+- name: Prepared statements
+  href: prepare.md
+- name: Advanced topics
+  items:
+  - name: Failover and load balancing
+    href: failover-and-load-balancing.md
+  - name: Bulk copy
+    href: copy.md
+  - name: Waiting for notifications
+    href: wait.md
+  - name: Keepalive
+    href: keepalive.md
+  - name: Replication
+    href: replication.md
+- name: Compatibility notes
+  href: compatibility.md
+- name: FAQ
+  href: faq.md
+- name: API reference
+  href: "https://www.npgsql.org/doc/api/Npgsql.html"
+- name: Developer notes
+  items:
+  - name: Release checklist
+    href: dev/release-checklist.md
+  - name: Tests
+    href: dev/tests.md
+  - name: Type representations
+    href: dev/type-representations.md
