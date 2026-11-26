@@ -975,6 +975,40 @@ public class MultipleHostsTests : TestBase
         Assert.That(secondDataSource.GetDatabaseState(), Is.EqualTo(DatabaseState.PrimaryReadWrite));
     }
 
+    [Test]
+    [IssueLink("https://github.com/npgsql/npgsql/issues/6733")]
+    public async Task Host_that_accepts_tcp_but_never_responds_is_marked_offline()
+    {
+        // Accepts the TCP connection and reads the startup message, but never responds to it.
+        await using var silentPostmaster = new PgPostmasterMock();
+        _ = silentPostmaster.AcceptServer();
+
+        await using var postmaster = PgPostmasterMock.Start(state: Primary);
+        var builder = new NpgsqlDataSourceBuilder
+        {
+            ConnectionStringBuilder =
+            {
+                Host = MultipleHosts(silentPostmaster, postmaster),
+                Timeout = 1,
+                ServerCompatibilityMode = ServerCompatibilityMode.NoTypeLoading
+            }
+        };
+        await using var dataSource = builder.BuildMultiHost();
+        var silentHostDataSource = dataSource.Pools[0];
+
+        await using var conn = await dataSource.OpenConnectionAsync(TargetSessionAttributes.Primary);
+        Assert.That(conn.Port, Is.EqualTo(postmaster.Port));
+
+        // The host accepted TCP but never answered the startup handshake. It must be marked offline,
+        // otherwise it stays Unknown (and therefore preferred), and every open waits for the full
+        // Timeout before falling back to the healthy host.
+        Assert.That(silentHostDataSource.GetDatabaseState(), Is.EqualTo(DatabaseState.Offline));
+
+        // The next open must skip the unresponsive host and use the pooled connection.
+        await using var secondConn = await dataSource.OpenConnectionAsync(TargetSessionAttributes.Primary);
+        Assert.That(secondConn.Port, Is.EqualTo(postmaster.Port));
+    }
+
     [Test, NonParallelizable]
     public async Task IntegrationTest([Values] bool loadBalancing, [Values] bool alwaysCheckHostState)
     {

@@ -519,7 +519,14 @@ public sealed partial class NpgsqlConnector
         {
             if (activity is not null)
                 NpgsqlActivitySource.SetException(activity, e);
-            Break(e, markHostAsOfflineOnConnecting: true);
+
+            Break(e);
+
+            // Break() intentionally doesn't mark the host offline while we're still connecting, since we may
+            // retry with different SSL/GSS settings. The physical open has now definitively failed, so mark
+            // the host offline just like a host that refused the connection.
+            MarkHostAsOffline(e, duringOpen: true);
+
             FullCleanup();
             throw;
         }
@@ -2275,12 +2282,11 @@ public sealed partial class NpgsqlConnector
     /// <summary>
     /// Called when a connector becomes completely unusable, e.g. when an unexpected I/O exception is raised or when
     /// we lose protocol sync.
-    /// Note that fatal errors during the Open phase do *not* pass through here.
+    /// Note that marking the host as offline for failures during the Open phase is done by <see cref="Open"/>.
     /// </summary>
     /// <param name="reason">The exception that caused the break.</param>
-    /// <param name="markHostAsOfflineOnConnecting">Whether we treat host as down, even if we're still connecting to PostgreSQL instance.</param>
     /// <returns>The exception given in <paramref name="reason"/> for chaining calls.</returns>
-    internal Exception Break(Exception reason, bool markHostAsOfflineOnConnecting = false)
+    internal Exception Break(Exception reason)
     {
         Debug.Assert(!IsClosed);
 
@@ -2323,14 +2329,8 @@ public sealed partial class NpgsqlConnector
                 // *and* the exception indicates that the PG cluster really is down; the latter includes any IO/timeout issue,
                 // but does not include e.g. authentication failure or timeouts with disabled cancellation.
                 // We also do not treat host as down if we're still connecting, as we might retry without GSS/TLS
-                if (reason is NpgsqlException { IsTransient: true } ne &&
-                    (state != ConnectorState.Connecting || markHostAsOfflineOnConnecting) &&
-                    (ne.InnerException is not TimeoutException || Settings.CancellationTimeout != -1) ||
-                    reason is PostgresException pe && PostgresErrorCodes.IsCriticalFailure(pe))
-                {
-                    DataSource.UpdateDatabaseState(DatabaseState.Offline, DateTime.UtcNow, Settings.HostRecheckSecondsTranslated);
-                    DataSource.Clear();
-                }
+                if (state != ConnectorState.Connecting && IsHostDown(reason))
+                    MarkHostAsOffline(reason);
 
                 var connection = Connection;
 
@@ -2364,6 +2364,22 @@ public sealed partial class NpgsqlConnector
         {
             Monitor.Exit(CleanupLock);
         }
+    }
+
+    // During a physical open there's no query that could have timed out, so a TimeoutException is always an
+    // IO failure and the CancellationTimeout-based distinction (which is only relevant for queries) doesn't apply.
+    bool IsHostDown(Exception reason, bool duringOpen = false)
+        => reason is NpgsqlException { IsTransient: true } ne &&
+           (duringOpen || ne.InnerException is not TimeoutException || Settings.CancellationTimeout != -1) ||
+           reason is PostgresException pe && PostgresErrorCodes.IsCriticalFailure(pe);
+
+    void MarkHostAsOffline(Exception reason, bool duringOpen = false)
+    {
+        if (!IsHostDown(reason, duringOpen))
+            return;
+
+        DataSource.UpdateDatabaseState(DatabaseState.Offline, DateTime.UtcNow, Settings.HostRecheckSecondsTranslated);
+        DataSource.Clear();
     }
 
     void FullCleanup()
