@@ -75,6 +75,36 @@ class ConnectionStringBuilderTests
     }
 
     [Test]
+    public void Remove_string_with_default_value()
+    {
+        var builder = new NpgsqlConnectionStringBuilder("Host=myhost;Encoding=LATIN1;Kerberos Service Name=foo");
+        Assert.That(builder.Remove("Encoding"), Is.True);
+        Assert.That(builder.Remove("Kerberos Service Name"), Is.True);
+        Assert.That(builder.ConnectionString, Is.EqualTo("Host=myhost"));
+        Assert.That(builder.Encoding, Is.EqualTo("UTF8"));
+        Assert.That(builder.KerberosServiceName, Is.EqualTo("postgres"));
+    }
+
+    [Test]
+    public void Clear_removes_strings_with_default_values()
+    {
+        var builder = new NpgsqlConnectionStringBuilder("Host=myhost;Encoding=LATIN1");
+        builder.Clear();
+        Assert.That(builder.Count, Is.EqualTo(0));
+        Assert.That(builder.ConnectionString, Is.EqualTo(""));
+        Assert.That(builder.Encoding, Is.EqualTo("UTF8"));
+    }
+
+    [Test]
+    public void Setting_null_indexer_removes_strings_with_default_values()
+    {
+        var builder = new NpgsqlConnectionStringBuilder("Host=myhost;Encoding=LATIN1");
+        builder["Encoding"] = null;
+        Assert.That(builder.ConnectionString, Is.EqualTo("Host=myhost"));
+        Assert.That(builder.Encoding, Is.EqualTo("UTF8"));
+    }
+
+    [Test]
     public void Enum()
     {
         var builder = new NpgsqlConnectionStringBuilder();
