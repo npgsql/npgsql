@@ -403,9 +403,10 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 
                     Expect<ParseCompleteMessage>(await Connector.ReadMessage(async).ConfigureAwait(false), Connector);
 
-                    if (statement.IsPreparing)
+                    var isPreparing = statement.IsPreparing;
+                    if (isPreparing)
                     {
-                        preparedStatement!.State = PreparedState.Prepared;
+                        preparedStatement!.State = PreparedState.ProcessingDescription;
                         Connector.PreparedStatementManager.NumPrepared++;
                         statement.IsPreparing = false;
                     }
@@ -425,6 +426,8 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 
                         _ => throw Connector.UnexpectedMessageReceived(msg.Code)
                     };
+
+                    if (isPreparing) preparedStatement!.State = PreparedState.Prepared;
                 }
 
                 if (RowDescription is not null)
@@ -522,8 +525,10 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                 // If the schema of a table changes after a statement is prepared on that table, PostgreSQL errors with
                 // 0A000: cached plan must not change result type. 0A000 seems like a non-specific code, but it's very unlikely the
                 // statement would successfully execute anyway, so invalidate the prepared statement.
-                if (postgresException.SqlState == PostgresErrorCodes.FeatureNotSupported &&
-                    statement.PreparedStatement is { } preparedStatement)
+                // Alternatively, if we get a postgres error while prepared statement isn't fully loaded.
+                // In this case, rather than to try to load description later, we just invalidate the statement.
+                if (statement.PreparedStatement is { } preparedStatement &&
+                    (postgresException.SqlState == PostgresErrorCodes.FeatureNotSupported || preparedStatement.State == PreparedState.ProcessingDescription))
                 {
                     preparedStatement.State = PreparedState.Invalidated;
                     Command.ResetPreparation();

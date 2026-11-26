@@ -647,6 +647,38 @@ LANGUAGE 'plpgsql';
         }
     }
 
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/6391")]
+    public async Task Auto_prepared_bind_failure_recovery()
+    {
+        await using var dataSource = CreateDataSource(csb =>
+        {
+            csb.MaxAutoPrepare = 10;
+            csb.AutoPrepareMinUsages = 1;
+            csb.MaxPoolSize = 1;
+        });
+        await using var connection = await dataSource.OpenConnectionAsync();
+        var table = await CreateTempTable(connection, "foo varchar(10)");
+
+        await using var batch = connection.CreateBatch();
+
+        var query = $"INSERT INTO {table} VALUES($1) RETURNING foo";
+
+        var cmd1 = batch.CreateBatchCommand();
+        batch.BatchCommands.Add(cmd1);
+        cmd1.CommandText = query;
+        var param1 = cmd1.Parameters.AddWithValue("Some very long text which will fail for sure");
+        var cmd2 = batch.CreateBatchCommand();
+        batch.BatchCommands.Add(cmd2);
+        cmd2.CommandText = query;
+        var param2 = cmd2.Parameters.AddWithValue("Small text");
+
+        var ex = await Assert.ThrowsAsync<PostgresException>(() => batch.ExecuteNonQueryAsync());
+        Assert.That(ex!.SqlState, Is.EqualTo(PostgresErrorCodes.StringDataRightTruncation));
+
+        param1.Value = "Small text";
+        await Assert.DoesNotThrowAsync(() => batch.ExecuteNonQueryAsync());
+    }
+
     void DumpPreparedStatements(NpgsqlConnection conn)
     {
         using var cmd = new NpgsqlCommand("SELECT name,statement FROM pg_prepared_statements", conn);
