@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Npgsql.Tests.Support;
 using NpgsqlTypes;
 using NUnit.Framework;
 using static Npgsql.Tests.TestUtil;
@@ -278,5 +279,47 @@ public class LoggingTests : TestBase
         Assert.That(batchCommands.Count, Is.EqualTo(2));
         Assert.That(batchCommands[0], Is.EqualTo("SELECT $1"));
         Assert.That(batchCommands[1], Is.EqualTo("SELECT $1, 9"));
+    }
+
+    [Test]
+    public async Task ParameterStatus([Values] bool sensitiveDataLoggingEnabled)
+    {
+        await using var postmaster = PgPostmasterMock.Start(ConnectionString);
+        await using var dataSource = CreateLoggingDataSource(out var listLoggerProvider, postmaster.ConnectionString, sensitiveDataLoggingEnabled);
+
+        await using var conn = await dataSource.OpenConnectionAsync();
+        var server = await postmaster.WaitForServerConnection();
+
+        using (listLoggerProvider.Record())
+        {
+            var queryTask = conn.ExecuteScalarAsync("SELECT 1");
+            await server.ExpectExtendedQuery();
+            await server
+                .WriteParameterStatus("TimeZone", "Europe/Berlin")
+                .WriteParameterStatus("scram_iterations", "4096")
+                .WriteParameterStatus("session_authorization", "npgsql_tests")
+                .WriteScalarResponseAndFlush(1);
+            await queryTask;
+        }
+
+        var parameterEvents = listLoggerProvider.Log.Where(l => l.Id == NpgsqlEventId.ReceivedParameterStatus).ToList();
+        Assert.That(parameterEvents, Has.Count.EqualTo(3));
+
+        var timeZoneEvent = parameterEvents[0];
+        Assert.That(timeZoneEvent.Message, Is.EqualTo("PostgreSQL connection parameter change, TimeZone=Europe/Berlin"));
+        AssertLoggingStateContains(timeZoneEvent, "ParameterName", "TimeZone");
+        AssertLoggingStateContains(timeZoneEvent, "ParameterValue", "Europe/Berlin");
+
+        var expectedScram = sensitiveDataLoggingEnabled ? "4096" : "?";
+        var scramEvent = parameterEvents[1];
+        Assert.That(scramEvent.Message, Is.EqualTo($"PostgreSQL connection parameter change, scram_iterations={expectedScram}"));
+        AssertLoggingStateContains(scramEvent, "ParameterName", "scram_iterations");
+        AssertLoggingStateContains(scramEvent, "ParameterValue", expectedScram);
+
+        var expectedAuth = sensitiveDataLoggingEnabled ? "npgsql_tests" : "?";
+        var authEvent = parameterEvents[2];
+        Assert.That(authEvent.Message, Is.EqualTo($"PostgreSQL connection parameter change, session_authorization={expectedAuth}"));
+        AssertLoggingStateContains(authEvent, "ParameterName", "session_authorization");
+        AssertLoggingStateContains(authEvent, "ParameterValue", expectedAuth);
     }
 }
