@@ -1,7 +1,7 @@
 # Mapping JSON
 
 > [!NOTE]
-> If you're using EF Core, please read the page on [JSON support in the EF provider](../../EFCore.PG/mapping/json.md). EF has specialized support for JSON beyond what is supported at the lower-level Npgsql layer.
+> If you're using EF Core, please read the page on [JSON support in the EF provider](https://www.npgsql.org/efcore/mapping/json.html). EF has specialized support for JSON beyond what is supported at the lower-level Npgsql layer.
 
 PostgreSQL has rich, built-in support for storing JSON columns and efficiently performing complex queries operations on them. Newcomers can read more about the PostgreSQL support on [the JSON types page](https://www.postgresql.org/docs/current/datatype-json.html), and on the [functions and operators page](https://www.postgresql.org/docs/current/functions-json.html). Note that the below mapping mechanisms support both the `jsonb` and `json` types, although the former is almost always preferred for efficiency and functionality reasons.
 

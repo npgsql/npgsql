@@ -1,0 +1,16 @@
+{
+    "default": true,
+    "MD011": false,
+    "MD013": false,
+    "MD024": false,
+    "MD028": false,
+    "MD033": { "allowed_elements": ["del", "a", "sup"] },
+    "MD051": false,
+    "MD046": {
+        "style": "fenced"
+    },
+    "MD055": false,
+    "MD056": false,
+    "MD059": false,
+    "MD060": false
+}
