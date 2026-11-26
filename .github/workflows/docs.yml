@@ -33,8 +33,18 @@ jobs:
       - name: Lint documentation
         run: markdownlint --config docs/.markdownlint.json "docs/**/*.md"
 
-      - name: Trigger documentation build
+      - name: Create GitHub App token
         if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'npgsql/npgsql'
+        id: docs-app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.DOCS_APP_ID }}
+          private-key: ${{ secrets.DOCS_APP_PRIVATE_KEY }}
+          owner: npgsql
+          repositories: doc
+
+      - name: Trigger documentation build
+        if: steps.docs-app-token.outcome == 'success'
         env:
-          GH_TOKEN: ${{ secrets.DOCS_DISPATCH_TOKEN }}
+          GH_TOKEN: ${{ steps.docs-app-token.outputs.token }}
         run: gh api --method POST repos/npgsql/doc/dispatches -f event_type=docs-changed
