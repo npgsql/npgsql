@@ -154,6 +154,11 @@ enum PreparedState
     BeingPrepared,
 
     /// <summary>
+    /// The statement is in the process of retrieving row description.
+    /// </summary>
+    ProcessingDescription,
+
+    /// <summary>
     /// The statement has been fully prepared and can be executed.
     /// </summary>
     Prepared,
