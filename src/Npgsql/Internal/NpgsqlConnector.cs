@@ -215,6 +215,7 @@ public sealed partial class NpgsqlConnector
     NpgsqlCommand? _currentCommand;
 
     bool _sendResetOnClose;
+    bool _resetDeferredUntilTransactionEnd;
 
     /// <summary>
     /// The connector source (e.g. pool) from where this connector came, and to which it will be returned.
@@ -2537,6 +2538,8 @@ public sealed partial class NpgsqlConnector
 
             ResetReadBuffer();
 
+            _resetDeferredUntilTransactionEnd = false;
+
             Transaction?.UnbindIfNecessary();
 
             // Must rollback transaction before sending DISCARD ALL
@@ -2596,17 +2599,65 @@ public sealed partial class NpgsqlConnector
 
         ResetReadBuffer();
 
+        _resetDeferredUntilTransactionEnd = false;
+
         if (_sendResetOnClose)
         {
-            if (_resetWithoutDeallocateMessage is null)
+            if (TransactionStatus == TransactionStatus.InFailedTransactionBlock)
             {
-                GenerateResetMessage();
+                // The reset commands can't run in a failed transaction block: the server would reject them with 25P02, which
+                // would break the next command (e.g. ROLLBACK TO SAVEPOINT). Defer the reset until the transaction has ended.
+                _resetDeferredUntilTransactionEnd = true;
             }
-
-            PrependInternalMessage(_resetWithoutDeallocateMessage, _resetWithoutDeallocateResponseCount);
+            else
+            {
+                PrependResetWithinTransaction();
+            }
         }
 
         DataReader.UnbindIfNecessary();
+    }
+
+    /// <summary>
+    /// Called when the enlisted transaction has ended and the connector is about to be returned to the pool, to prepend
+    /// the reset which had to be skipped because the connection was closed while the transaction was in a failed state.
+    /// As with the other resets, this only reserves the message in the write buffer: it's sent with the first command
+    /// executed after the connector is next used.
+    /// </summary>
+    internal void ResetAfterEnlistedTransactionEnd()
+    {
+        if (!_resetDeferredUntilTransactionEnd)
+            return;
+
+        _resetDeferredUntilTransactionEnd = false;
+
+        if (!IsReady)
+            return;
+
+        try
+        {
+            using var _ = StartUserAction(attemptPgCancellation: false);
+            WriteBuffer.Clear();
+            PendingPrependedResponses = 0;
+            PrependResetWithinTransaction();
+        }
+        catch (Exception e)
+        {
+            // The connector is about to be returned to the pool, which must not be prevented by a failure here.
+            // We can't be sure the connector's state is still consistent, so break it: the pool will discard it.
+            if (!IsClosed)
+                Break(e);
+        }
+    }
+
+    void PrependResetWithinTransaction()
+    {
+        if (_resetWithoutDeallocateMessage is null)
+        {
+            GenerateResetMessage();
+        }
+
+        PrependInternalMessage(_resetWithoutDeallocateMessage, _resetWithoutDeallocateResponseCount);
     }
 
     /// <summary>
