@@ -1,6 +1,7 @@
 using System;
 using System.Data;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Transactions;
 using NUnit.Framework;
 using static Npgsql.Tests.TestUtil;
@@ -360,6 +361,200 @@ public class SystemTransactionTests : TestBase
         }
 
         Assert.That(pooling ? dataSource.Statistics.Busy : dataSource.Statistics.Total, Is.EqualTo(0));
+    }
+
+    [Test]
+    [IssueLink("https://github.com/npgsql/npgsql/issues/6766")]
+    public async Task Rollback_to_savepoint_after_connection_closed_in_failed_transaction([Values] bool async)
+    {
+        using var dataSource = CreateDataSource(csb => csb.Enlist = true);
+        var table = "temp_rows_" + Guid.NewGuid().ToString("N");
+        using (var setup = dataSource.OpenConnection())
+            setup.ExecuteNonQuery($"CREATE TABLE {table} (id int)");
+
+        try
+        {
+            using (var scope = new TransactionScope())
+            {
+                using (var conn = dataSource.OpenConnection())
+                {
+                    conn.ExecuteNonQuery($"INSERT INTO {table} VALUES (1)");
+                    conn.ExecuteNonQuery("SAVEPOINT sp");
+                }
+
+                using (var conn = dataSource.OpenConnection())
+                {
+                    conn.ExecuteNonQuery($"INSERT INTO {table} VALUES (2)");
+                    Assert.That(() => conn.ExecuteNonQuery("SELECT 1/0"), Throws.Exception.TypeOf<PostgresException>().With.Property(nameof(PostgresException.SqlState)).EqualTo("22012"));
+                    // The connection is closed while the transaction is in a failed state
+                    if (async)
+                        await conn.CloseAsync();
+                }
+
+                using (var conn = dataSource.OpenConnection())
+                {
+                    conn.ExecuteNonQuery("ROLLBACK TO SAVEPOINT sp");
+                    conn.ExecuteNonQuery($"INSERT INTO {table} VALUES (3)");
+                }
+
+                scope.Complete();
+            }
+
+            using var verify = dataSource.OpenConnection();
+            Assert.That(verify.ExecuteScalar($"SELECT string_agg(id::text, ',' ORDER BY id) FROM {table}"), Is.EqualTo("1,3"));
+        }
+        finally
+        {
+            using var cleanup = dataSource.OpenConnection();
+            cleanup.ExecuteNonQuery($"DROP TABLE IF EXISTS {table}");
+        }
+    }
+
+    [Test]
+    [IssueLink("https://github.com/npgsql/npgsql/issues/6766")]
+    public void Reset_is_sent_when_connection_closed_in_failed_transaction_and_transaction_ends()
+    {
+        using var dataSource = CreateDataSource(csb =>
+        {
+            csb.Enlist = true;
+            csb.MaxPoolSize = 1;
+        });
+        const long lockId = 6766;
+        object? pid;
+
+        using (var scope = new TransactionScope())
+        using (var conn = dataSource.OpenConnection())
+        {
+            pid = conn.ExecuteScalar("SELECT pg_backend_pid()");
+            conn.ExecuteNonQuery($"SELECT pg_advisory_lock({lockId})");
+            Assert.That(() => conn.ExecuteNonQuery("SELECT 1/0"), Throws.Exception.TypeOf<PostgresException>().With.Property(nameof(PostgresException.SqlState)).EqualTo("22012"));
+            conn.Close();
+            // The scope isn't completed, so the transaction is rolled back
+        }
+
+        // The same physical connection is reused, and its session state must have been reset
+        using var conn2 = dataSource.OpenConnection();
+        Assert.That(conn2.ExecuteScalar("SELECT pg_backend_pid()"), Is.EqualTo(pid), "Expected the same physical connection to be reused");
+        Assert.That(conn2.ExecuteScalar($"SELECT pg_advisory_unlock({lockId})"), Is.False);
+    }
+
+    [Test]
+    [IssueLink("https://github.com/npgsql/npgsql/issues/6766")]
+    public void Reset_is_sent_when_connection_reopened_after_failed_close_and_closed_after_recovery()
+    {
+        using var dataSource = CreateDataSource(csb =>
+        {
+            csb.Enlist = true;
+            csb.MaxPoolSize = 1;
+        });
+        const long lockId = 6767;
+        object? pid;
+
+        using (var scope = new TransactionScope())
+        {
+            using (var conn = dataSource.OpenConnection())
+            {
+                pid = conn.ExecuteScalar("SELECT pg_backend_pid()");
+                conn.ExecuteNonQuery("SAVEPOINT sp");
+                conn.ExecuteNonQuery($"SELECT pg_advisory_lock({lockId})");
+                Assert.That(() => conn.ExecuteNonQuery("SELECT 1/0"), Throws.Exception.TypeOf<PostgresException>().With.Property(nameof(PostgresException.SqlState)).EqualTo("22012"));
+            }
+
+            using (var conn = dataSource.OpenConnection())
+                conn.ExecuteNonQuery("ROLLBACK TO SAVEPOINT sp");
+
+            scope.Complete();
+        }
+
+        using var conn2 = dataSource.OpenConnection();
+        Assert.That(conn2.ExecuteScalar("SELECT pg_backend_pid()"), Is.EqualTo(pid), "Expected the same physical connection to be reused");
+        Assert.That(conn2.ExecuteScalar($"SELECT pg_advisory_unlock({lockId})"), Is.False);
+    }
+
+    [Test]
+    [IssueLink("https://github.com/npgsql/npgsql/issues/6766")]
+    public void Reset_is_not_duplicated_when_reopened_connection_outlives_failed_close_and_transaction()
+    {
+        using var dataSource = CreateDataSource(csb =>
+        {
+            csb.Enlist = true;
+            csb.MaxPoolSize = 1;
+        });
+        const long lockId = 6768;
+        NpgsqlConnection outer;
+        object? pid;
+
+        using (var scope = new TransactionScope())
+        {
+            using (var conn = dataSource.OpenConnection())
+            {
+                pid = conn.ExecuteScalar("SELECT pg_backend_pid()");
+                conn.ExecuteNonQuery($"SELECT pg_advisory_lock({lockId})");
+                Assert.That(() => conn.ExecuteNonQuery("SELECT 1/0"), Throws.Exception.TypeOf<PostgresException>().With.Property(nameof(PostgresException.SqlState)).EqualTo("22012"));
+            }
+
+            // Reopened (the same physical connection) and left open past the end of the transaction
+            outer = dataSource.OpenConnection();
+        }
+
+        outer.Dispose();
+
+        using var conn2 = dataSource.OpenConnection();
+        Assert.That(conn2.ExecuteScalar("SELECT pg_backend_pid()"), Is.EqualTo(pid), "Expected the same physical connection to be reused");
+        Assert.That(conn2.ExecuteScalar($"SELECT pg_advisory_unlock({lockId})"), Is.False);
+        Assert.That(conn2.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
+    }
+
+    [Test]
+    [IssueLink("https://github.com/npgsql/npgsql/issues/6766")]
+    public async Task Rollback_to_savepoint_after_connection_closed_in_failed_transaction_async_flow()
+    {
+        await using var dataSource = CreateDataSource(csb =>
+        {
+            csb.Enlist = true;
+            csb.MaxPoolSize = 1;
+        });
+        var table = "temp_rows_" + Guid.NewGuid().ToString("N");
+        await using (var setup = await dataSource.OpenConnectionAsync())
+            await setup.ExecuteNonQueryAsync($"CREATE TABLE {table} (id int)");
+
+        try
+        {
+            object? pid;
+            using (var scope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled))
+            {
+                await using (var conn = await dataSource.OpenConnectionAsync())
+                {
+                    pid = await conn.ExecuteScalarAsync("SELECT pg_backend_pid()");
+                    await conn.ExecuteNonQueryAsync($"INSERT INTO {table} VALUES (1)");
+                    await conn.ExecuteNonQueryAsync("SAVEPOINT sp");
+                }
+
+                await using (var conn = await dataSource.OpenConnectionAsync())
+                {
+                    await conn.ExecuteNonQueryAsync($"INSERT INTO {table} VALUES (2)");
+                    Assert.That(async () => await conn.ExecuteNonQueryAsync("SELECT 1/0"),
+                        Throws.Exception.TypeOf<PostgresException>().With.Property(nameof(PostgresException.SqlState)).EqualTo("22012"));
+                }
+
+                await using (var conn = await dataSource.OpenConnectionAsync())
+                {
+                    await conn.ExecuteNonQueryAsync("ROLLBACK TO SAVEPOINT sp");
+                    Assert.That(await conn.ExecuteScalarAsync("SELECT pg_backend_pid()"), Is.EqualTo(pid));
+                    await conn.ExecuteNonQueryAsync($"INSERT INTO {table} VALUES (3)");
+                }
+
+                scope.Complete();
+            }
+
+            await using var verify = await dataSource.OpenConnectionAsync();
+            Assert.That(await verify.ExecuteScalarAsync($"SELECT string_agg(id::text, ',' ORDER BY id) FROM {table}"), Is.EqualTo("1,3"));
+        }
+        finally
+        {
+            await using var cleanup = await dataSource.OpenConnectionAsync();
+            await cleanup.ExecuteNonQueryAsync($"DROP TABLE IF EXISTS {table}");
+        }
     }
 
     [Test]
