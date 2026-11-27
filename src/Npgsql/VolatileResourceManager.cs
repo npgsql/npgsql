@@ -284,7 +284,10 @@ sealed class VolatileResourceManager : ISinglePhaseNotification
             // Note that we remove it from the NpgsqlDataSource bound to connection and not to connector
             // because of NpgsqlMultiHostDataSource which has its own list to which connection adds connectors.
             if (_dataSource.TryRemovePendingEnlistedConnector(_connector, _transaction))
+            {
+                _connector.ResetAfterEnlistedTransactionEnd();
                 _connector.Return();
+            }
         }
 
         _connector = null!;
