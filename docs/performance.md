@@ -45,6 +45,8 @@ When a pooled connection is closed, Npgsql will arrange for its state to be rese
 
 Connection reset happens via the PostgreSQL [`DISCARD ALL` command](https://www.postgresql.org/docs/current/static/sql-discard.html), or, if there are any prepared statements at the time of closing, by a combination of the equivalent statements described in the docs (to prevent closing those statements). Note that these statements aren't actually sent when closing the connection - they're written into Npgsql's internal write buffer, and will be sent with the first user statement after the connection is reopened. This prevents a costly database roundtrip.
 
+If the connection is closed inside an enlisted `TransactionScope`, `DISCARD ALL` can't be used, so the equivalent statements are written to the write buffer in the same way. If the transaction is in a failed state when the connection is closed, PostgreSQL would reject these statements and the transaction couldn't be recovered (e.g. with `ROLLBACK TO SAVEPOINT`), so they aren't buffered at that point. Instead, they're buffered when the connection is closed again while the transaction isn't failed, or when the transaction ends and the physical connection is returned to the pool. Until then, a connection reopened within the same transaction isn't reset.
+
 If you really want to squeeze every last bit of performance from PostgreSQL, you may disable connect reset by specifying `No Reset On Close` on your connection string - this will slightly improve performance in scenarios where connection are very short-lived, and especially if prepared statements are in use.
 
 ## Reading Large Values
