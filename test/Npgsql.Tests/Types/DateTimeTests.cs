@@ -551,6 +551,13 @@ public class DateTimeTests : TestBase
     public Task Interval_with_months_cannot_read_as_TimeSpan()
         => AssertTypeUnsupportedRead<TimeSpan, InvalidCastException>("1 month 2 days", "interval");
 
+    [Test]
+    [TestCase("300000000 hours", TestName = "Interval_out_of_TimeSpan_range_cannot_read_as_TimeSpan_hours")]
+    [TestCase("-300000000 hours", TestName = "Interval_out_of_TimeSpan_range_cannot_read_as_TimeSpan_negative_hours")]
+    [TestCase("20000000 days", TestName = "Interval_out_of_TimeSpan_range_cannot_read_as_TimeSpan_days")]
+    public Task Interval_out_of_TimeSpan_range_cannot_read_as_TimeSpan(string sqlLiteral)
+        => AssertTypeUnsupportedRead<TimeSpan, InvalidCastException>(sqlLiteral, "interval");
+
     #endregion
 
     protected override async ValueTask<NpgsqlConnection> OpenConnectionAsync()
