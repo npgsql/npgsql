@@ -943,10 +943,19 @@ FROM pg_constraint c
         switch (type.Name)
         {
         case "varchar":
-        case "char":
             row["DataType"] = "String";
             row["IsBestMatch"] = false;
             goto case "text";
+        case "char":
+            // PostgreSQL's internal one-byte "char" type (OID 18). Unquoted, CHAR(n) is character(n), a different type, so
+            // the name is quoted and takes no size.
+            row["IsBestMatch"] = false;
+            row["CreateFormat"] = "\"char\"";
+            row["IsSearchableWithLike"] = true;
+            row["IsLiteralSupported"] = true;
+            row["LiteralPrefix"] = "'";
+            row["LiteralSuffix"] = "'";
+            return;
         case "text":
             row["CreateFormat"] += "({0})";
             row["CreateParameters"] = "size";
